@@ -2,7 +2,7 @@ import type { ZodRawShape } from "zod";
 import type { GalaxyContext } from "../context";
 import { GalaxyError, GalaxyVersionError } from "../errors";
 import { parseRequirement, requirementSentence, satisfiesRequirement } from "../version";
-import type { AnyOperation, GalaxyResult, InputOf, Operation } from "./types";
+import type { AnyOperation, GalaxyResult, InputOf, Operation, RunFindings } from "./types";
 
 /** Something that can carry a Galaxy requirement: an op, or a copy of one. */
 type Claim = { name: string; requires?: { galaxy: string } };
@@ -77,9 +77,11 @@ export async function runWithEnvelope<Shape extends ZodRawShape, O>(
   input: InputOf<Shape>,
   ctx: GalaxyContext,
 ): Promise<GalaxyResult<O>> {
+  const found: RunFindings = {};
   try {
-    const data = await runOperation(op, input, ctx);
-    const meta = op.project?.(data, input) ?? {};
+    const pinned = await guardVersion(ctx, op);
+    const data = await op.run(input, pinned, found);
+    const meta = op.project?.(data, input, found) ?? {};
     return { data, success: true, ...meta };
   } catch (err) {
     if (err instanceof GalaxyError) {
@@ -122,7 +124,12 @@ export function register(op: AnyOperation): AnyOperation {
   // the check. The original survives only in this closure and is deliberately not exported --
   // there is no unguarded entry point to reach for by accident.
   const unguarded = op.run.bind(op);
-  op.run = async function (this: Claim | undefined, input: never, ctx: GalaxyContext) {
+  op.run = async function (
+    this: Claim | undefined,
+    input: never,
+    ctx: GalaxyContext,
+    found?: RunFindings,
+  ) {
     // The requirement registered here always applies. A copy this was called on is checked as
     // well when it carries a different one, so a copy can ask for MORE than the op it was made
     // from but never for less -- whichever direction it differs in, and whether it arrived as a
@@ -136,7 +143,9 @@ export function register(op: AnyOperation): AnyOperation {
     const receiver =
       this?.requires && this.requires.galaxy !== registeredSpec ? this : undefined;
     const pinned = await guardVersion(ctx, registeredClaim, receiver);
-    return unguarded(input, pinned);
+    // The findings go through: the guard stands in front of every call, so anything it drops
+    // here the operation can never be given.
+    return unguarded(input, pinned, found);
   };
 
   registeredNames.add(op.name);

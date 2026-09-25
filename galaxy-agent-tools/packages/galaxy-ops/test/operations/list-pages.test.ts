@@ -6,7 +6,15 @@ import { DEFAULT_POLL } from "../../src/context";
 import type { GalaxyContext } from "../../src/context";
 
 const ctxWith = (client: any): GalaxyContext => ({ client, poll: DEFAULT_POLL });
-const ok = (data: unknown) => ({ data, response: { status: 200 } });
+const ok = (data: unknown, totalMatches?: number) => ({
+  data,
+  response: {
+    status: 200,
+    // The pages index reports how many matched on a header, which is where the total
+    // in the envelope comes from.
+    headers: new Headers(totalMatches == null ? {} : { total_matches: String(totalMatches) }),
+  },
+});
 
 describe("list_pages", () => {
   it("is read-only, so the MCP surface annotates it as one", () => {
@@ -74,5 +82,21 @@ describe("list_pages", () => {
     const r = await runWithEnvelope(listPagesOp as any, {}, ctxWith(client));
     expect(r.success).toBe(false);
     expect(r.errorKind).toBe("auth");
+  });
+});
+
+describe("list_pages totals", () => {
+  it("reports how many matched, not how many this page holds", async () => {
+    const client = mockClient({ GET: () => ok([{ id: "p1" }, { id: "p2" }], 1622) });
+    const r = await runWithEnvelope(listPagesOp as never, { limit: 2 } as never, ctxWith(client));
+    expect(r.pagination).toEqual({ total: 1622, limit: 2, offset: 0 });
+    expect(r.message).toContain("of 1622");
+  });
+
+  it("states no total when the server sends no header, rather than guessing one", async () => {
+    const client = mockClient({ GET: () => ok([{ id: "p1" }]) });
+    const r = await runWithEnvelope(listPagesOp as never, { limit: 2 } as never, ctxWith(client));
+    expect(r.pagination?.total).toBeUndefined();
+    expect(r.message).toBe("1 page(s)");
   });
 });

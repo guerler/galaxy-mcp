@@ -3,7 +3,7 @@ import type { GalaxyContext } from "../context";
 import { classifyHttp } from "../errors";
 import type { PageSummary } from "./pages-common";
 import { register, runOperation } from "./registry";
-import type { AnyOperation, Operation } from "./types";
+import type { AnyOperation, Operation, RunFindings } from "./types";
 
 const DEFAULT_LIMIT = 100;
 
@@ -24,7 +24,7 @@ type In = {
   showShared?: boolean;
 };
 
-async function run(i: In, ctx: GalaxyContext): Promise<PageSummary[]> {
+async function run(i: In, ctx: GalaxyContext, found?: RunFindings): Promise<PageSummary[]> {
   const { data, error, response } = await ctx.client.GET("/api/pages", {
     params: {
       query: {
@@ -45,6 +45,13 @@ async function run(i: In, ctx: GalaxyContext): Promise<PageSummary[]> {
     },
   });
   if (error || !data) throw classifyHttp(response.status, error);
+  // The index reports how many matched on a header; only the run sees the response. Read the
+  // header before converting: Number(null) is 0, so an absent header would claim none matched.
+  const header = response.headers?.get("total_matches");
+  const matches = header == null ? Number.NaN : Number(header);
+  if (found && Number.isFinite(matches)) {
+    found.pagination = { total: matches, limit: i.limit ?? DEFAULT_LIMIT, offset: i.offset ?? 0 };
+  }
   return data as PageSummary[];
 }
 
@@ -58,12 +65,13 @@ export const listPagesOp: Operation<typeof input, PageSummary[]> = {
   input,
   requires: { galaxy: ">=26.1" },
   run,
-  project: (pages, i) => ({
-    message: `${pages.length} page(s)`,
-    // No total: the server reports it on a total_matches response header, which project()
-    // never sees. Returning limit/offset lets a caller page; a full count needs the header.
-    pagination: { offset: i.offset ?? 0, limit: i.limit ?? DEFAULT_LIMIT },
-  }),
+  project: (pages, i, found) => {
+    const total = found?.pagination?.total;
+    return {
+      message: total != null ? `${pages.length} of ${total} page(s)` : `${pages.length} page(s)`,
+      pagination: found?.pagination ?? { offset: i.offset ?? 0, limit: i.limit ?? DEFAULT_LIMIT },
+    };
+  },
 };
 
 register(listPagesOp as AnyOperation);

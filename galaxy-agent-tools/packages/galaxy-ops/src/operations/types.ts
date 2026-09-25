@@ -44,8 +44,23 @@ export interface Operation<Shape extends ZodRawShape, O> {
   readonly readOnly?: boolean;
   /** Destructive (delete/cancel) ops set this true (drives MCP destructiveHint). */
   readonly destructive?: boolean;
-  run(input: InputOf<Shape>, ctx: GalaxyContext): Promise<O>;
-  project?(output: O, input: InputOf<Shape>): { message?: string; pagination?: Pagination };
+  run(input: InputOf<Shape>, ctx: GalaxyContext, found?: RunFindings): Promise<O>;
+  project?(
+    output: O,
+    input: InputOf<Shape>,
+    found?: RunFindings,
+  ): { message?: string; pagination?: Pagination };
+}
+
+/**
+ * What a run learned that belongs in the envelope rather than in the data.
+ *
+ * A total is the case this exists for: Galaxy reports it on a response header or a count
+ * route, so only run() can see it, while only project() shapes the envelope. Putting it in
+ * the returned data instead would change what the operation promises its callers.
+ */
+export interface RunFindings {
+  pagination?: Pagination;
 }
 
 /** Heterogeneous registry element. */

@@ -8,16 +8,45 @@ import type { GalaxyContext } from "../../src/context";
 const ctxWith = (client: any): GalaxyContext => ({ client, poll: DEFAULT_POLL });
 
 describe("get_histories", () => {
-  it("passes limit/offset as query and filters name client-side", async () => {
+  it("passes limit and offset as the query", async () => {
     const client = mockClient({
       GET: (path, init) => {
         expect(path).toBe("/api/histories");
         expect(init.params.query.limit).toBe(2);
-        return { data: [{ id: "h1", name: "alpha" }, { id: "h2", name: "beta" }], response: { status: 200 } };
+        expect(init.params.query.offset).toBe(5);
+        return { data: [{ id: "h1" }], response: { status: 200 } };
+      },
+    });
+    expect((await getHistories({ limit: 2, offset: 5 }, ctxWith(client))).map((h: any) => h.id)).toEqual(["h1"]);
+  });
+
+  it("hands the name filter to Galaxy so it narrows before it pages", async () => {
+    // Filtering the page here instead would answer a window of the unfiltered list: with
+    // limit=2 over [alpha, beta, alpine], the alpine match never reaches the filter.
+    let seen: any = null;
+    const client = mockClient({
+      GET: (_path, init) => {
+        seen = init.params.query;
+        return { data: [{ id: "h1", name: "alpha" }], response: { status: 200 } };
       },
     });
     const out = await getHistories({ limit: 2, name: "alp" }, ctxWith(client));
+    expect(seen.q).toEqual(["name-contains"]);
+    expect(seen.qv).toEqual(["alp"]);
     expect(out.map((h: any) => h.id)).toEqual(["h1"]);
+  });
+
+  it("sends no filter when no name was given", async () => {
+    let seen: any = null;
+    const client = mockClient({
+      GET: (_path, init) => {
+        seen = init.params.query;
+        return { data: [], response: { status: 200 } };
+      },
+    });
+    await getHistories({}, ctxWith(client));
+    expect(seen.q).toBeUndefined();
+    expect(seen.qv).toBeUndefined();
   });
 });
 
@@ -48,6 +77,21 @@ describe("get_histories totals", () => {
     const r = await runWithEnvelope(getHistoriesOp as never, {} as never, ctxWith(client));
     expect(asked).toEqual(["/api/histories"]);
     expect(r.pagination).toEqual({ total: 2 });
+  });
+
+  it("asks for no count when a name narrowed the set", async () => {
+    // The count route counts every history; reporting it beside a filtered page would state a
+    // total for a different set than the one shown.
+    const asked: string[] = [];
+    const client = mockClient({
+      GET: (path) => {
+        asked.push(path);
+        return route(2851)(path);
+      },
+    });
+    const r = await runWithEnvelope(getHistoriesOp as never, { limit: 2, name: "alp" } as never, ctxWith(client));
+    expect(asked).toEqual(["/api/histories"]);
+    expect(r.pagination).toBeUndefined();
   });
 
   it("leaves the total unstated when the count route will not answer", async () => {

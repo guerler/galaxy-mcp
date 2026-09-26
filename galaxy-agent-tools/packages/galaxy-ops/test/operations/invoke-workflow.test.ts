@@ -139,6 +139,28 @@ describe("invoke_workflow op", () => {
     expect(capturedBody.inputs_by).toBe("step_index|step_uuid");
   });
 
+  it("carries parameters and the normalized flag through to the invocation", async () => {
+    let capturedBody: any = null;
+    const client = buildPreflightClient({
+      datasetExt: "fastq",
+      postSpy: (_path, init) => {
+        capturedBody = init?.body;
+      },
+    });
+    await invokeWorkflow(
+      {
+        workflowId: "wf1",
+        historyId: "h99",
+        inputs: { "0": { src: "hda", id: "ds1" } },
+        params: { "2": { threshold: 5 } },
+        parametersNormalized: true,
+      },
+      ctxWith(client),
+    );
+    expect(capturedBody.parameters).toEqual({ "2": { threshold: 5 } });
+    expect(capturedBody.parameters_normalized).toBe(true);
+  });
+
   // (c) rejecting input -> throws, NO POST fired
   it("throws GalaxyConnectionError and does NOT POST when inputs fail validation", async () => {
     let postCalled = false;

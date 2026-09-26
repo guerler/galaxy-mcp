@@ -9,8 +9,8 @@ import type { AnyOperation, Operation, Pagination, RunFindings } from "./types";
 const DEFAULT_LIMIT = 20;
 
 const input = {
-  limit: z.coerce.number().int().positive().max(100).optional().describe("Max workflows to return (default 20)"),
-  offset: z.coerce.number().int().min(0).optional().describe("Skip the first N"),
+  limit: z.coerce.number().int().positive().max(100).default(DEFAULT_LIMIT).describe("Max workflows to return"),
+  offset: z.coerce.number().int().min(0).default(0).describe("Skip the first N"),
 };
 type In = { limit?: number; offset?: number };
 

@@ -16,8 +16,8 @@ const input = {
   workflowId: z.string().optional().describe("List only invocations of this workflow"),
   historyId: z.string().optional().describe("List only invocations in this history"),
   limit: z.coerce.number().int().positive().optional().describe("Max invocations to return"),
-  view: z.enum(["element", "collection"]).optional().describe("'element' for detail, 'collection' for summary"),
-  stepDetails: z.boolean().optional().describe("Include each step's detail"),
+  view: z.enum(["element", "collection"]).default("collection").describe("'element' for detail, 'collection' for summary"),
+  stepDetails: z.boolean().default(false).describe("Include each step's detail"),
 };
 type In = {
   invocationId?: string;

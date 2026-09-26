@@ -24,8 +24,8 @@ const DEFAULT_PREVIEW_LINES = 10;
 
 const input = {
   datasetId: z.string().describe("Encoded dataset id"),
-  includePreview: z.boolean().optional().describe("Include a preview of the content (default true)"),
-  previewLines: z.coerce.number().int().positive().optional().describe("Lines of content to preview (default 10)"),
+  includePreview: z.boolean().default(true).describe("Include a preview of the content"),
+  previewLines: z.coerce.number().int().positive().default(DEFAULT_PREVIEW_LINES).describe("Lines of content to preview"),
 };
 type In = { datasetId: string; includePreview?: boolean; previewLines?: number };
 

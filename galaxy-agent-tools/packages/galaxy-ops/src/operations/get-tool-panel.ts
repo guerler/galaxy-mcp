@@ -109,8 +109,8 @@ const input = {
     .string()
     .nullish()
     .describe("Panel section to open; omit, or pass null, to list the sections themselves"),
-  limit: z.coerce.number().int().positive().max(500).nullish().describe("Max entries to return (default 100)"),
-  offset: z.coerce.number().int().min(0).nullish().describe("Skip the first N"),
+  limit: z.coerce.number().int().positive().max(500).nullish().default(DEFAULT_LIMIT).describe("Max entries to return"),
+  offset: z.coerce.number().int().min(0).nullish().default(0).describe("Skip the first N"),
 };
 type In = { sectionId?: string | null; limit?: number | null; offset?: number | null };
 

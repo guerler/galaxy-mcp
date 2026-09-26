@@ -18,3 +18,20 @@ describe("list_workflows", () => {
     expect((out as any[]).map((w) => w.id)).toEqual(["w1"]);
   });
 });
+
+describe("list_workflows name filter", () => {
+  const ROWS = [
+    { id: "w1", name: "RNA-seq", tags: ["rnaseq"] },
+    { id: "w2", name: "Assembly", tags: ["long-read", "qc"] },
+  ];
+  const ctx: any = { client: mockClient({ GET: () => ({ data: ROWS, response: { status: 200 } }) }), poll: DEFAULT_POLL };
+
+  it("matches a tag as well as a name", async () => {
+    expect(await listWorkflows({ name: "long-read" }, ctx)).toEqual([ROWS[1]]);
+    expect(await listWorkflows({ name: "assem" }, ctx)).toEqual([ROWS[1]]);
+  });
+
+  it("returns everything when no name is given", async () => {
+    expect(await listWorkflows({}, ctx)).toHaveLength(2);
+  });
+});

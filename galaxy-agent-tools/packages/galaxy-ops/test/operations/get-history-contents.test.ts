@@ -18,4 +18,14 @@ describe("get_history_contents", () => {
     const out = await getHistoryContents({ historyId: "h1" }, ctxWith(client));
     expect((out as any[]).length).toBe(1);
   });
+
+  it("passes the sort order through to Galaxy", async () => {
+    const client = mockClient({
+      GET: (_path, init) => {
+        expect(init.params.query.order).toBe("hid-dsc");
+        return { data: [], response: { status: 200 } };
+      },
+    });
+    await getHistoryContents({ historyId: "h1", order: "hid-dsc" }, ctxWith(client));
+  });
 });

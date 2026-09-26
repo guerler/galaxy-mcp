@@ -13,14 +13,21 @@ const input = {
   offset: z.coerce.number().int().min(0).optional().describe("Skip the first N"),
   deleted: z.boolean().optional().describe("Include deleted items"),
   visible: z.boolean().optional().describe("Only visible items"),
+  order: z.string().optional().describe("Sort order, e.g. 'hid-asc', 'hid-dsc', 'create_time-dsc'"),
 };
-type In = { historyId: string; limit?: number; offset?: number; deleted?: boolean; visible?: boolean };
+type In = { historyId: string; limit?: number; offset?: number; deleted?: boolean; visible?: boolean; order?: string };
 
 async function run(i: In, ctx: GalaxyContext): Promise<HistoryContents> {
   const { data, error, response } = await ctx.client.GET("/api/histories/{history_id}/contents", {
     params: {
       path: { history_id: i.historyId },
-      query: { limit: i.limit ?? null, offset: i.offset ?? null, deleted: i.deleted ?? null, visible: i.visible ?? null },
+      query: {
+        limit: i.limit ?? null,
+        offset: i.offset ?? null,
+        deleted: i.deleted ?? null,
+        visible: i.visible ?? null,
+        order: i.order ?? null,
+      },
     },
   });
   if (error || !data) throw classifyHttp(response.status, error);

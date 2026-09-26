@@ -11,11 +11,7 @@
     "directory": "galaxy-agent-tools/packages/galaxy-ops"
   },
   "bugs": "https://github.com/galaxyproject/galaxy-mcp/issues",
-  "keywords": [
-    "galaxy",
-    "bioinformatics",
-    "galaxy-project"
-  ],
+  "keywords": ["galaxy", "bioinformatics", "galaxy-project"],
   "type": "module",
   "publishConfig": {
     "access": "public"

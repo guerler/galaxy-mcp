@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { components } from "@galaxyproject/galaxy-api-client";
+import type { components } from "../bindings";
 import type { GalaxyContext } from "../context";
 import { classifyHttp } from "../errors";
 import { legacyGet } from "../legacy";

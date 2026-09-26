@@ -16,16 +16,21 @@
  * references: a schema is read exactly as the surface wrote it.
  */
 
-export type DivergenceKind =
-  | "missing-ts-tool"
-  | "missing-py-tool"
-  | "missing-ts-param"
-  | "missing-py-param"
-  | "type-mismatch"
-  | "required-mismatch"
-  | "default-mismatch"
-  | "mutability-mismatch"
-  | "requires-mismatch";
+/** Every difference the comparator can report. A list, so a check can read it back. */
+export const DIVERGENCE_KINDS = [
+  "missing-ts-tool",
+  "missing-py-tool",
+  "missing-ts-param",
+  "missing-py-param",
+  "type-mismatch",
+  "required-mismatch",
+  "default-mismatch",
+  "mutability-mismatch",
+  "requires-mismatch",
+  "result-shape",
+] as const;
+
+export type DivergenceKind = (typeof DIVERGENCE_KINDS)[number];
 
 /** Kinds that are about a whole tool rather than one of its parameters. */
 export const WHOLE_TOOL_KINDS: readonly DivergenceKind[] = [
@@ -34,6 +39,14 @@ export const WHOLE_TOOL_KINDS: readonly DivergenceKind[] = [
   "mutability-mismatch",
   "requires-mismatch",
 ];
+
+/**
+ * Kinds that are about a whole tool or about one field, depending on what was found.
+ *
+ * A result shape is compared field by field when both sides state one, and whole when only one
+ * side does: there is no field to name against a surface that promises nothing.
+ */
+export const EITHER_WAY_KINDS: readonly DivergenceKind[] = ["result-shape"];
 
 export interface Divergence {
   tool: string;
@@ -73,6 +86,14 @@ export interface ToolContract {
   tags?: readonly string[];
   /** The lower bound the tool declares on the Galaxy it will run against, if it declares one. */
   requires?: { galaxy: string };
+  /**
+   * The top-level fields of the result the tool says a caller may read, when it says.
+   *
+   * Undeclared and absent are different answers. A surface that states nothing here is not
+   * promising an empty result, so nothing is compared; only two surfaces that both state a
+   * shape can be said to disagree about it.
+   */
+  resultFields?: readonly string[];
 }
 
 /**
@@ -716,6 +737,46 @@ function showTool(contract: ToolContract, rules: Normalization, where: string): 
   return `${showMutability(mutability(contract, where))}${declared} params=[${params}]`;
 }
 
+/**
+ * What the two sides say a caller may read out of the result.
+ *
+ * Per field rather than per tool, so each difference is reviewed and accepted on its own and a
+ * second one cannot hide inside an entry already signed off. A side that declares nothing is
+ * reported whole instead: there is no field to name when a surface hands back what Galaxy sent.
+ */
+function compareResultShape(tool: string, python: ToolContract, typescript: ToolContract): Divergence[] {
+  const py = python.resultFields;
+  const ts = typescript.resultFields;
+  if (py === undefined && ts === undefined) return [];
+  if (py === undefined || ts === undefined) {
+    return [
+      {
+        tool,
+        param: null,
+        kind: "result-shape",
+        observed: `python=${py ? `[${[...py].sort().join(", ")}]` : "undeclared"} typescript=${
+          ts ? `[${[...ts].sort().join(", ")}]` : "undeclared"
+        }`,
+      },
+    ];
+  }
+  const [pySet, tsSet] = [new Set(py), new Set(ts)];
+  return [...new Set([...py, ...ts])].sort().flatMap((field) =>
+    pySet.has(field) === tsSet.has(field)
+      ? []
+      : [
+          {
+            tool,
+            param: field,
+            kind: "result-shape" as const,
+            observed: `python=${pySet.has(field) ? "present" : "absent"} typescript=${
+              tsSet.has(field) ? "present" : "absent"
+            }`,
+          },
+        ],
+  );
+}
+
 function compareTool(
   tool: string,
   python: ToolContract,
@@ -747,6 +808,7 @@ function compareTool(
       observed: `python=${pyNeeds ?? "none"} typescript=${tsNeeds ?? "none"}`,
     });
   }
+  found.push(...compareResultShape(tool, python, typescript));
   const py = normalizeParams(python.inputSchema, rules, `${tool} (python)`);
   const ts = normalizeParams(typescript.inputSchema, rules, `${tool} (typescript)`);
   for (const [param, p] of py) {

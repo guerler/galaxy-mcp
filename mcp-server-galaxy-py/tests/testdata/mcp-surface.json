@@ -23,7 +23,11 @@
           "invocation_id"
         ],
         "type": "object"
-      }
+      },
+      "resultFields": [
+        "cancelled",
+        "invocation"
+      ]
     },
     {
       "name": "connect",
@@ -62,7 +66,13 @@
           }
         },
         "type": "object"
-      }
+      },
+      "resultFields": [
+        "auth",
+        "connected",
+        "url",
+        "user"
+      ]
     },
     {
       "name": "create_history",
@@ -207,7 +217,11 @@
           "uuid"
         ],
         "type": "object"
-      }
+      },
+      "resultFields": [
+        "deactivated",
+        "uuid"
+      ]
     },
     {
       "name": "download_dataset",
@@ -251,7 +265,16 @@
           "dataset_id"
         ],
         "type": "object"
-      }
+      },
+      "resultFields": [
+        "content_available",
+        "dataset_id",
+        "dataset_info",
+        "file_path",
+        "file_size",
+        "note",
+        "suggested_filename"
+      ]
     },
     {
       "name": "get_collection_details",
@@ -278,7 +301,15 @@
           "collection_id"
         ],
         "type": "object"
-      }
+      },
+      "resultFields": [
+        "collection",
+        "collection_id",
+        "elements",
+        "elements_truncated",
+        "history_content_type",
+        "note"
+      ]
     },
     {
       "name": "get_dataset_details",
@@ -401,7 +432,11 @@
           "history_id"
         ],
         "type": "object"
-      }
+      },
+      "resultFields": [
+        "contents",
+        "history_id"
+      ]
     },
     {
       "name": "get_history_details",
@@ -423,7 +458,11 @@
           "history_id"
         ],
         "type": "object"
-      }
+      },
+      "resultFields": [
+        "contents_summary",
+        "history"
+      ]
     },
     {
       "name": "get_invocations",
@@ -577,7 +616,12 @@
           "dataset_id"
         ],
         "type": "object"
-      }
+      },
+      "resultFields": [
+        "dataset_id",
+        "job",
+        "job_id"
+      ]
     },
     {
       "name": "get_page",
@@ -670,7 +714,12 @@
           "tool_id"
         ],
         "type": "object"
-      }
+      },
+      "resultFields": [
+        "citations",
+        "tool_name",
+        "tool_version"
+      ]
     },
     {
       "name": "get_tool_details",
@@ -718,7 +767,12 @@
           "tool_id"
         ],
         "type": "object"
-      }
+      },
+      "resultFields": [
+        "inputs_template",
+        "parameters",
+        "tool_id"
+      ]
     },
     {
       "name": "get_tool_panel",
@@ -789,7 +843,12 @@
           "tool_id"
         ],
         "type": "object"
-      }
+      },
+      "resultFields": [
+        "requested_version",
+        "test_cases",
+        "tool_id"
+      ]
     },
     {
       "name": "get_user",

@@ -10,11 +10,11 @@ Every difference carries the status and the reason recorded in `galaxy-agent-too
 
 | Status | Differences |
 | --- | --- |
-| `intentional` | `4` |
-| `pending-port` | `16` |
+| `intentional` | `7` |
+| `pending-port` | `18` |
 | `pending-decision` | `0` |
 | `unreviewed-gap` | `21` |
-| **total** | `41` |
+| **total** | `46` |
 
 `unreviewed-gap` is the status nobody has ruled on yet. The check holds the registry to the 21 it declares, so the count cannot drift from the number; raising that number is an edit somebody has to make in the diff, and it is meant to come down, never up.
 
@@ -31,13 +31,16 @@ A row per tool, then a row per parameter the surfaces disagree about. `--` means
 | `create_user_tool` |  | `write (tag)` | `write (hint)` |  |  |  |
 | `delete_user_tool` |  | `write (tag)` | `write (hint)` |  |  |  |
 | `download_dataset` |  | `read (tag)` | `write (hint)` | `mutability-mismatch` | `unreviewed-gap` | Python tags the tool read; the TS op advertises readOnlyHint false because it can write the bytes to a local path. One of the two is wrong about what read-only means for a tool that touches the caller's disk, and MCP clients gate approval on that hint. |
+| `download_dataset` | `file_path` | -- | -- | `result-shape` | `intentional` | Set only on the branch that was given a path to write to; the in-memory branch has no path to name, so the field is not promised. |
+| `download_dataset` | `file_size` | -- | -- | `result-shape` | `intentional` | Set only on the in-memory branch, which is the one that measured the bytes. Mutually exclusive with file_path, so neither is promised. |
+| `download_dataset` | `note` | -- | -- | `result-shape` | `pending-port` | Python's result carries a next-steps note and the TS op builds none. |
 | `download_dataset` | `require_ok_state` | `type=boolean required=false default=true` | `type=boolean required=false default=none` | `default-mismatch` | `unreviewed-gap` | TS applies the same default in run() but does not declare it in the advertised schema, so an agent reading the tool cannot see it. |
 | `download_dataset` | `use_default_filename` | `type=boolean required=false default=true` | -- | `missing-ts-param` | `unreviewed-gap` | Python can write next to the dataset's own name; TS only writes to the exact filePath it is given. |
 | `get_collection_details` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_dataset_details` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_histories` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_histories` | `offset` | `type=integer required=false default=0` | `type=integer required=false default=none` | `default-mismatch` | `unreviewed-gap` | TS leaves offset unset and takes Galaxy's default of 0, which is the same value Python sends; only the declaration differs. |
-| `get_history_contents` |  | `read (tag)` | `read (hint)` |  |  |  |
+| `get_history_contents` |  | `read (tag)` | `read (hint)` | `result-shape` | `pending-port` | Python wraps the rows as {contents, history_id}; the TS op hands back Galaxy's array, so a caller reading data.contents finds nothing where the Python server puts the rows. |
 | `get_history_contents` | `deleted` | `type=boolean required=false default=false` | `type=boolean required=false default=none` | `default-mismatch` | `unreviewed-gap` | Python pins deleted=False; TS leaves the filter unset, so Galaxy decides and the same call can return a different set of items. |
 | `get_history_contents` | `limit` | `type=integer required=false default=100` | `type=integer required=false default=none` | `default-mismatch` | `unreviewed-gap` | Python caps the listing at 100 items; TS leaves limit unset, so a large history comes back unbounded. |
 | `get_history_contents` | `offset` | `type=integer required=false default=0` | `type=integer required=false default=none` | `default-mismatch` | `unreviewed-gap` | TS leaves offset unset and takes Galaxy's default of 0, which is the same value Python sends; only the declaration differs. |
@@ -56,7 +59,7 @@ A row per tool, then a row per parameter the surfaces disagree about. `--` means
 | `get_tool_details` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_tool_details` | `io_details` | `type=boolean required=false default=false` | `type=boolean required=false default=none` | `default-mismatch` | `unreviewed-gap` | TS applies the same default in run() but does not declare it in the advertised schema, so an agent reading the tool cannot see it. |
 | `get_tool_input_template` |  | `read (tag)` | `read (hint)` |  |  |  |
-| `get_tool_panel` |  | `read (tag)` | `read (hint)` |  |  |  |
+| `get_tool_panel` |  | `read (tag)` | `read (hint)` | `result-shape` | `intentional` | Panel-wide counts, reported on every page and every section: how many tools a server has installed has no other answer in the surface, and the top level is mostly sections so counting a page's entries undercounts it. Python assembles this result outside a dict literal, so its shape is not stated for comparison. |
 | `get_tool_run_examples` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_user` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_workflow_details` |  | `read (tag)` | `read (hint)` |  |  |  |

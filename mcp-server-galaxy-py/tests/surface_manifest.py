@@ -10,6 +10,7 @@ Regenerate with `uv run python -m tests.surface_manifest`.
 
 from __future__ import annotations
 
+import ast
 import asyncio
 import json
 from pathlib import Path
@@ -73,6 +74,49 @@ def _assert_numbers_survive_json(value: Any, where: str) -> None:
         )
 
 
+def _result_fields(name: str) -> list[str] | None:
+    """The top-level keys of the tool's result, read off the literal it builds.
+
+    Published so the TypeScript side's `resultFields` can be compared against this rather than
+    against a docstring. Only a tool that names its keys in one dict literal is described: where
+    the result is assembled elsewhere, or two literals disagree, the shape is not a fact this
+    generator can state, and saying nothing is what lets the comparison stay exact.
+    """
+    fn = _SOURCE_FUNCTIONS.get(name)
+    if fn is None:
+        return None
+    shapes = set()
+    for node in ast.walk(fn):
+        if not (isinstance(node, ast.Call) and getattr(node.func, "id", None) == "GalaxyResult"):
+            continue
+        for kw in node.keywords:
+            if kw.arg != "data" or not isinstance(kw.value, ast.Dict):
+                continue
+            keys = [k.value for k in kw.value.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)]
+            if keys and len(keys) == len(kw.value.keys):
+                shapes.add(tuple(keys))
+    if len(shapes) != 1:
+        return None
+    return sorted(shapes.pop())
+
+
+def _source_functions() -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
+    """Every tool-decorated function in server.py, by name."""
+    tree = ast.parse(Path(server.__file__).read_text())
+    out: dict[str, ast.FunctionDef | ast.AsyncFunctionDef] = {}
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for decorator in node.decorator_list:
+            call = decorator.func if isinstance(decorator, ast.Call) else decorator
+            if getattr(call, "attr", None) == "tool":
+                out[node.name] = node
+    return out
+
+
+_SOURCE_FUNCTIONS = _source_functions()
+
+
 def _entry(tool: Tool, conditional_on: str | None) -> dict[str, Any]:
     entry: dict[str, Any] = {"name": tool.name, "tags": sorted(tool.tags)}
     # Recorded structurally rather than left to the description, so the TypeScript side's
@@ -84,6 +128,9 @@ def _entry(tool: Tool, conditional_on: str | None) -> dict[str, Any]:
         entry["conditionalOn"] = conditional_on
     entry["annotations"] = _annotations(tool)
     entry["inputSchema"] = tool.parameters
+    fields = _result_fields(tool.name)
+    if fields is not None:
+        entry["resultFields"] = fields
     _assert_numbers_survive_json(entry, tool.name)
     return entry
 

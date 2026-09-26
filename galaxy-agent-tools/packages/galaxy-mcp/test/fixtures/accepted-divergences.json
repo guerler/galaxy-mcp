@@ -55,6 +55,30 @@
       "reason": "Python can write next to the dataset's own name; TS only writes to the exact filePath it is given."
     },
     {
+      "tool": "download_dataset",
+      "param": "file_path",
+      "kind": "result-shape",
+      "observed": "python=present typescript=absent",
+      "status": "intentional",
+      "reason": "Set only on the branch that was given a path to write to; the in-memory branch has no path to name, so the field is not promised."
+    },
+    {
+      "tool": "download_dataset",
+      "param": "file_size",
+      "kind": "result-shape",
+      "observed": "python=present typescript=absent",
+      "status": "intentional",
+      "reason": "Set only on the in-memory branch, which is the one that measured the bytes. Mutually exclusive with file_path, so neither is promised."
+    },
+    {
+      "tool": "download_dataset",
+      "param": "note",
+      "kind": "result-shape",
+      "observed": "python=present typescript=absent",
+      "status": "pending-port",
+      "reason": "Python's result carries a next-steps note and the TS op builds none."
+    },
+    {
       "tool": "get_histories",
       "param": "offset",
       "kind": "default-mismatch",
@@ -93,6 +117,14 @@
       "observed": "python=true typescript=none",
       "status": "unreviewed-gap",
       "reason": "Python pins visible=True; TS leaves the filter unset, so Galaxy decides and the same call can return a different set of items."
+    },
+    {
+      "tool": "get_history_contents",
+      "param": null,
+      "kind": "result-shape",
+      "observed": "python=[contents, history_id] typescript=undeclared",
+      "status": "pending-port",
+      "reason": "Python wraps the rows as {contents, history_id}; the TS op hands back Galaxy's array, so a caller reading data.contents finds nothing where the Python server puts the rows."
     },
     {
       "tool": "get_page",
@@ -239,6 +271,22 @@
       "reason": "TS sends Galaxy's show_published query parameter only when `published` is given, and Galaxy's own default for it is false, the value Python always sends; only the declaration differs."
     },
     {
+      "tool": "list_workflows",
+      "param": "limit",
+      "kind": "default-mismatch",
+      "observed": "python=50 typescript=none",
+      "status": "intentional",
+      "reason": "Unpaged, the TS op answers with every workflow the filters matched and reports the total; paging is opt-in. Declaring Python's 50 would truncate a caller that asked for no page."
+    },
+    {
+      "tool": "list_workflows",
+      "param": "offset",
+      "kind": "default-mismatch",
+      "observed": "python=0 typescript=none",
+      "status": "intentional",
+      "reason": "Offset only means something once a limit is given; unpaged there is no window to move."
+    },
+    {
       "tool": "recommend_biocontainer",
       "param": null,
       "kind": "missing-ts-tool",
@@ -335,20 +383,12 @@
       "reason": "The listing route accepts only these two views, so the TS op declares them as an enum: a wrong value is a schema error the caller sees rather than a 400 from Galaxy."
     },
     {
-      "tool": "list_workflows",
-      "param": "limit",
-      "kind": "default-mismatch",
-      "observed": "python=50 typescript=none",
+      "tool": "get_tool_panel",
+      "param": null,
+      "kind": "result-shape",
+      "observed": "python=undeclared typescript=[section_count, tool_count]",
       "status": "intentional",
-      "reason": "Unpaged, the TS op answers with every workflow the filters matched and reports the total; paging is opt-in. Declaring Python's 50 would truncate a caller that asked for no page."
-    },
-    {
-      "tool": "list_workflows",
-      "param": "offset",
-      "kind": "default-mismatch",
-      "observed": "python=0 typescript=none",
-      "status": "intentional",
-      "reason": "Offset only means something once a limit is given; unpaged there is no window to move."
+      "reason": "Panel-wide counts, reported on every page and every section: how many tools a server has installed has no other answer in the surface, and the top level is mostly sections so counting a page's entries undercounts it. Python assembles this result outside a dict literal, so its shape is not stated for comparison."
     }
   ]
 }

@@ -283,10 +283,16 @@ export function renderReport(input: ReportInput): string {
       ),
     ].sort(byText);
     for (const param of parameters) {
+      // A result field is not a parameter, so the parameter columns have nothing to say about
+      // it; borrowing them would print an input contract beside a claim about the result.
+      const aboutTheResult = divergences.some(
+        (d) => d.tool === tool && d.param === param && d.kind === "result-shape",
+      );
       rows.push([
         code(tool),
         code(param),
         ...surfaces.map((column) => {
+          if (aboutTheResult) return ABSENT;
           const declared = parametersOf(column, tool).get(param);
           return declared ? code(showContract(declared)) : ABSENT;
         }),

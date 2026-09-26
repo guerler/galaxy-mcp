@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { GetJson } from "../bindings";
 import type { GalaxyContext } from "../context";
 import { classifyHttp } from "../errors";
+import { legacyGet } from "../legacy";
 import { register, runOperation } from "./registry";
 import type { AnyOperation, Operation } from "./types";
 
@@ -28,9 +29,24 @@ const input = {
 };
 type In = { datasetId: string; includePreview?: boolean; previewLines?: number };
 
-/** The first bytes of a dataset as text, or null when it does not decode as text. */
-async function head(ctx: GalaxyContext, datasetId: string): Promise<string | null> {
-  // parseAs is not on the typed client; the cast is localized to this call, as in download_dataset.
+/** Galaxy's chunked display answer: a line-aligned prefix of a chunkable datatype. */
+interface Chunk {
+  ck_data?: string;
+}
+
+/** The head of a dataset as text, read without pulling the whole file into memory. */
+async function head(ctx: GalaxyContext, datasetId: string): Promise<string> {
+  // The chunked display route answers a line-aligned prefix, so a multi-gigabyte dataset
+  // costs the preview and no more. Not every datatype supports it; those fall back below.
+  try {
+    const chunk = await legacyGet<Chunk>(ctx, "/api/datasets/{dataset_id}/display", {
+      params: { path: { dataset_id: datasetId }, query: { offset: 0, ck_size: PREVIEW_BYTES } },
+    });
+    if (typeof chunk?.ck_data === "string") return chunk.ck_data;
+  } catch {
+    // not chunkable, or the route answered something else -- read the head instead
+  }
+  // parseAs is not on the typed client; the cast is localized, as in download_dataset.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error, response } = await (ctx.client.GET as any)("/api/datasets/{dataset_id}/display", {
     params: { path: { dataset_id: datasetId } },
@@ -40,7 +56,7 @@ async function head(ctx: GalaxyContext, datasetId: string): Promise<string | nul
   const bytes = new Uint8Array(data as ArrayBuffer).slice(0, PREVIEW_BYTES);
   const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
   // U+FFFD in the first bytes means this is not text; a hex head says so without pretending.
-  if (text.includes("�")) {
+  if (text.includes("\uFFFD")) {
     const hex = Array.from(bytes.slice(0, 100), (b) => b.toString(16).padStart(2, "0")).join("");
     return `[Binary content - first ${Math.min(100, bytes.length)} bytes as hex: ${hex}]`;
   }
@@ -49,7 +65,7 @@ async function head(ctx: GalaxyContext, datasetId: string): Promise<string | nul
 
 async function preview(ctx: GalaxyContext, datasetId: string, want: number): Promise<DatasetPreview> {
   try {
-    const text = (await head(ctx, datasetId)) ?? "";
+    const text = await head(ctx, datasetId);
     const lines = text.split("\n");
     return {
       lines: lines.slice(0, want).join("\n"),

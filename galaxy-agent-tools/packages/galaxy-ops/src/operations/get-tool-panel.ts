@@ -151,6 +151,7 @@ async function run(i: In, ctx: GalaxyContext, found?: RunFindings): Promise<Tool
 export const getToolPanelOp: Operation<typeof input, ToolPanel> = {
   name: "get_tool_panel",
   domain: "tools",
+  resultFields: ["tool_count", "section_count"],
   summary:
     "Browse the Galaxy tool panel one level at a time. Every answer carries tool_count, how many " +
     "tools the server has installed, and section_count. With no arguments it lists the top-level " +

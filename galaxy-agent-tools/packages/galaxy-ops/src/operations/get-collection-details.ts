@@ -107,6 +107,14 @@ async function run(i: In, ctx: GalaxyContext): Promise<CollectionDetail> {
 export const getCollectionDetailsOp: Operation<typeof input, CollectionDetail> = {
   name: "get_collection_details", // parity: mcp-server-galaxy-py get_collection_details
   domain: "collections",
+  resultFields: [
+    "collection_id",
+    "history_content_type",
+    "collection",
+    "elements",
+    "elements_truncated",
+    "note",
+  ],
   summary: "Show a dataset collection by id: its metadata and its members, flattened and truncated.",
   input,
   run,

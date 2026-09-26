@@ -83,6 +83,7 @@ async function run(i: In, ctx: GalaxyContext): Promise<GetJobDetailsResult> {
 export const getJobDetailsOp: Operation<typeof input, GetJobDetailsResult> = {
   name: "get_job_details",
   domain: "jobs",
+  resultFields: ["job", "dataset_id", "job_id"],
   summary: "Get job details for the job that produced a dataset.",
   input,
   run,

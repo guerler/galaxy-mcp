@@ -35,6 +35,7 @@ async function run(i: In, ctx: GalaxyContext): Promise<ToolRunExamples> {
 export const getToolRunExamplesOp: Operation<typeof input, ToolRunExamples> = {
   name: "get_tool_run_examples",
   domain: "tools",
+  resultFields: ["tool_id", "requested_version", "test_cases"],
   summary: "Return test-data examples (inputs/outputs) for a Galaxy tool.",
   input,
   run,

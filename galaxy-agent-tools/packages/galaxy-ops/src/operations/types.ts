@@ -50,6 +50,16 @@ export interface Operation<Shape extends ZodRawShape, O> {
   readonly readOnly?: boolean;
   /** Destructive (delete/cancel) ops set this true (drives MCP destructiveHint). */
   readonly destructive?: boolean;
+  /**
+   * The top-level fields of the returned data a caller may rely on.
+   *
+   * Declared only by an operation that composes its own result, because only then is there a
+   * shape this package owns; an operation handing back what Galaxy sent has Galaxy's shape and
+   * nothing to promise. Two things read it: a test that the operation really returns each one,
+   * which is the check a dropped field slips past otherwise, and the parity report, which
+   * compares it against the fields the Python server's result literal names.
+   */
+  readonly resultFields?: readonly string[];
   run(input: InputOf<Shape>, ctx: GalaxyContext, found?: RunFindings): Promise<O>;
   project?(
     output: O,

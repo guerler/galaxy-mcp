@@ -7,6 +7,11 @@ import type { AnyOperation, Operation, Pagination, RunFindings } from "./types";
 
 export type Workflows = GetJson<"/api/workflows">;
 
+/** Letters and digits only, so "rna seq", "rna-seq" and "RNAseq" are one query. */
+function alnum(text: string | undefined): string {
+  return (text ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 const input = {
   name: z.string().optional().describe("Case-insensitive substring filter on workflow name or tag"),
   published: z.boolean().optional().describe("Only published workflows"),
@@ -26,10 +31,10 @@ async function run(i: In, ctx: GalaxyContext, found?: RunFindings): Promise<Work
   if (i.name) {
     // Galaxy's own ?search drops short terms, so the filter is applied here -- over tags as
     // well as the name, because a workflow is as often found by its tag as by what it is called.
-    const needle = i.name.toLowerCase();
+    const needle = alnum(i.name);
     rows = rows.filter((w) => {
-      const named = (w.name ?? "").toLowerCase().includes(needle);
-      return named || (w.tags ?? []).some((t) => String(t).toLowerCase().includes(needle));
+      const named = alnum(w.name).includes(needle);
+      return named || (w.tags ?? []).some((t) => alnum(String(t)).includes(needle));
     });
   }
   // Every filter is applied here, so the total is what matched rather than what Galaxy holds.

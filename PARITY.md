@@ -10,13 +10,13 @@ Every difference carries the status and the reason recorded in `galaxy-agent-too
 
 | Status | Differences |
 | --- | --- |
-| `intentional` | `1` |
-| `pending-port` | `31` |
+| `intentional` | `4` |
+| `pending-port` | `16` |
 | `pending-decision` | `0` |
-| `unreviewed-gap` | `24` |
-| **total** | `56` |
+| `unreviewed-gap` | `22` |
+| **total** | `42` |
 
-`unreviewed-gap` is the status nobody has ruled on yet. The check holds the registry to the 24 it declares, so the count cannot drift from the number; raising that number is an edit somebody has to make in the diff, and it is meant to come down, never up.
+`unreviewed-gap` is the status nobody has ruled on yet. The check holds the registry to the 22 it declares, so the count cannot drift from the number; raising that number is an edit somebody has to make in the diff, and it is meant to come down, never up.
 
 ## Tools
 
@@ -36,28 +36,18 @@ A row per tool, then a row per parameter the surfaces disagree about. `--` means
 | `get_collection_details` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_collection_details` | `max_elements` | `type=integer required=false default=100` | `type=integer required=false default=none` | `default-mismatch` | `unreviewed-gap` | Python always truncates the element list to 100; TS truncates only when asked, so the same call can return a much larger payload. |
 | `get_dataset_details` |  | `read (tag)` | `read (hint)` |  |  |  |
-| `get_dataset_details` | `include_preview` | `type=boolean required=false default=true` | -- | `missing-ts-param` | `pending-port` | The TS op's own summary defers content preview to a later phase. |
-| `get_dataset_details` | `preview_lines` | `type=integer required=false default=10` | -- | `missing-ts-param` | `pending-port` | The TS op's own summary defers content preview to a later phase. |
 | `get_histories` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_histories` | `offset` | `type=integer required=false default=0` | `type=integer required=false default=none` | `default-mismatch` | `unreviewed-gap` | TS leaves offset unset and takes Galaxy's default of 0, which is the same value Python sends; only the declaration differs. |
 | `get_history_contents` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_history_contents` | `deleted` | `type=boolean required=false default=false` | `type=boolean required=false default=none` | `default-mismatch` | `unreviewed-gap` | Python pins deleted=False; TS leaves the filter unset, so Galaxy decides and the same call can return a different set of items. |
 | `get_history_contents` | `limit` | `type=integer required=false default=100` | `type=integer required=false default=none` | `default-mismatch` | `unreviewed-gap` | Python caps the listing at 100 items; TS leaves limit unset, so a large history comes back unbounded. |
 | `get_history_contents` | `offset` | `type=integer required=false default=0` | `type=integer required=false default=none` | `default-mismatch` | `unreviewed-gap` | TS leaves offset unset and takes Galaxy's default of 0, which is the same value Python sends; only the declaration differs. |
-| `get_history_contents` | `order` | `type=string required=false default="hid-asc"` | -- | `missing-ts-param` | `unreviewed-gap` | Python orders by hid-asc and lets you change it; TS has no ordering control. |
 | `get_history_contents` | `visible` | `type=boolean required=false default=true` | `type=boolean required=false default=none` | `default-mismatch` | `unreviewed-gap` | Python pins visible=True; TS leaves the filter unset, so Galaxy decides and the same call can return a different set of items. |
 | `get_history_details` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_invocations` |  | `read (tag)` | `read (hint)` |  |  |  |
-| `get_invocations` | `history_id` | `type=string required=false default=none` | -- | `missing-ts-param` | `pending-port` | The TS op is the detail-by-id read only; its own comment defers listing and filtering to a later version. |
-| `get_invocations` | `invocation_id` | `type=string required=false default=none` | `type=string required=true default=none` | `required-mismatch` | `pending-port` | The TS op is the detail-by-id read only; its own comment defers listing and filtering to a later version. |
-| `get_invocations` | `limit` | `type=integer required=false default=none` | -- | `missing-ts-param` | `pending-port` | The TS op is the detail-by-id read only; its own comment defers listing and filtering to a later version. |
-| `get_invocations` | `step_details` | `type=boolean required=false default=false` | -- | `missing-ts-param` | `pending-port` | The TS op is the detail-by-id read only; its own comment defers listing and filtering to a later version. |
-| `get_invocations` | `view` | `type=string required=false default="collection"` | -- | `missing-ts-param` | `pending-port` | The TS op is the detail-by-id read only; its own comment defers listing and filtering to a later version. |
-| `get_invocations` | `workflow_id` | `type=string required=false default=none` | -- | `missing-ts-param` | `pending-port` | The TS op is the detail-by-id read only; its own comment defers listing and filtering to a later version. |
+| `get_invocations` | `view` | `type=string required=false default="collection"` | `type=enum<"collection"\|"element">&string required=false default="collection"` | `type-mismatch` | `intentional` | The listing route accepts only these two views, so the TS op declares them as an enum: a wrong value is a schema error the caller sees rather than a 400 from Galaxy. |
 | `get_iwc_workflow_details` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_iwc_workflows` |  | `read (tag)` | `read (hint)` |  |  |  |
-| `get_iwc_workflows` | `limit` | `type=integer required=false default=20` | -- | `missing-ts-param` | `pending-port` | The Python tool caps its page and the TS op still returns everything it finds; the cap is owed on the TS side and will arrive with the same parameter. |
-| `get_iwc_workflows` | `offset` | `type=integer required=false default=0` | -- | `missing-ts-param` | `pending-port` | The Python tool caps its page and the TS op still returns everything it finds; the cap is owed on the TS side and will arrive with the same parameter. |
 | `get_job_details` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_page` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_page` | `include_rendered` | `type=boolean required=false default=false` | `type=boolean required=false default=none` | `default-mismatch` | `pending-port` | TS applies the same default inside run() but leaves it off the advertised schema, so an agent reading the tool cannot see it. The TS op passes `i.includeRendered ?? false` to stripRendered; declaring `.default(false)` on the input closes it. |
@@ -68,9 +58,6 @@ A row per tool, then a row per parameter the surfaces disagree about. `--` means
 | `get_tool_details` | `io_details` | `type=boolean required=false default=false` | `type=boolean required=false default=none` | `default-mismatch` | `unreviewed-gap` | TS applies the same default in run() but does not declare it in the advertised schema, so an agent reading the tool cannot see it. |
 | `get_tool_input_template` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_tool_panel` |  | `read (tag)` | `read (hint)` |  |  |  |
-| `get_tool_panel` | `limit` | `type=integer required=false default=100` | -- | `missing-ts-param` | `pending-port` | The Python tool caps its page and the TS op still returns everything it finds; the cap is owed on the TS side and will arrive with the same parameter. |
-| `get_tool_panel` | `offset` | `type=integer required=false default=0` | -- | `missing-ts-param` | `pending-port` | The Python tool caps its page and the TS op still returns everything it finds; the cap is owed on the TS side and will arrive with the same parameter. |
-| `get_tool_panel` | `section_id` | `type=string required=false default=none` | -- | `missing-ts-param` | `pending-port` | The Python tool summarizes the sections and opens one on request; the TS op returns the whole panel, so it has nothing to name a section with yet. |
 | `get_tool_run_examples` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_user` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_workflow_details` |  | `read (tag)` | `read (hint)` |  |  |  |
@@ -97,10 +84,9 @@ A row per tool, then a row per parameter the surfaces disagree about. `--` means
 | `list_user_tools` | `limit` | `type=integer required=false default=25` | -- | `missing-ts-param` | `pending-port` | The Python tool caps its page and the TS op still returns everything it finds; the cap is owed on the TS side and will arrive with the same parameter. |
 | `list_user_tools` | `offset` | `type=integer required=false default=0` | -- | `missing-ts-param` | `pending-port` | The Python tool caps its page and the TS op still returns everything it finds; the cap is owed on the TS side and will arrive with the same parameter. |
 | `list_workflows` |  | `read (tag)` | `read (hint)` |  |  |  |
-| `list_workflows` | `limit` | `type=integer required=false default=50` | -- | `missing-ts-param` | `pending-port` | The Python tool caps its page and the TS op still returns everything it finds; the cap is owed on the TS side and will arrive with the same parameter. |
-| `list_workflows` | `offset` | `type=integer required=false default=0` | -- | `missing-ts-param` | `pending-port` | The Python tool caps its page and the TS op still returns everything it finds; the cap is owed on the TS side and will arrive with the same parameter. |
+| `list_workflows` | `limit` | `type=integer required=false default=50` | `type=integer required=false default=none` | `default-mismatch` | `intentional` | Unpaged, the TS op answers with every workflow the filters matched and reports the total; paging is opt-in. Declaring Python's 50 would truncate a caller that asked for no page. |
+| `list_workflows` | `offset` | `type=integer required=false default=0` | `type=integer required=false default=none` | `default-mismatch` | `intentional` | Offset only means something once a limit is given; unpaged there is no window to move. |
 | `list_workflows` | `published` | `type=boolean required=false default=false` | `type=boolean required=false default=none` | `default-mismatch` | `unreviewed-gap` | TS sends Galaxy's show_published query parameter only when `published` is given, and Galaxy's own default for it is false, the value Python always sends; only the declaration differs. |
-| `list_workflows` | `workflow_id` | `type=string required=false default=none` | -- | `missing-ts-param` | `unreviewed-gap` | Python's list_workflows doubles as a fetch-by-id; TS splits that into get_workflow_details. Probably right, but nobody has confirmed it. |
 | `recommend_biocontainer` |  | `read (tag)` | -- | `missing-ts-tool` | `unreviewed-gap` | Needs galaxy.tool_util's mulled recommender, which has no TS equivalent, so a port means reimplementing mulled name resolution rather than translating an op. |
 | `recommend_iwc_workflows` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `recommend_iwc_workflows` | `limit` | `type=integer required=false default=5` | `type=integer required=false default=none` | `default-mismatch` | `unreviewed-gap` | TS applies the same default in run() but does not declare it in the advertised schema, so an agent reading the tool cannot see it. |

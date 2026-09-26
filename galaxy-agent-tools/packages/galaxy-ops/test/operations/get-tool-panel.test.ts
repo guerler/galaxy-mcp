@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getToolPanelOp, getToolPanel } from "../../src/operations/get-tool-panel";
+import { getToolPanelOp, getToolPanel, type PanelSummary, type SlimTool } from "../../src/operations/get-tool-panel";
 import { mockClient } from "../util/mock-client";
 import { DEFAULT_POLL } from "../../src/context";
 import { GalaxyNotFoundError } from "../../src/errors";
@@ -63,6 +63,32 @@ describe("get_tool_panel", () => {
     };
     expect(out.entries).toEqual([{ id: "section2", name: "Assembly", type: "section", tool_count: 0 }]);
     expect(found.pagination).toEqual({ total: 3, limit: 1, offset: 1 });
+  });
+
+  it("keeps every tool class, naming only the structural entries it drops", async () => {
+    // Galaxy ships 25+ tool classes; listing the ones to keep would silently drop tools.
+    const panel = [
+      {
+        id: "getext",
+        name: "Get Data",
+        model_class: "ToolSection",
+        elems: [
+          { id: "upload1", name: "Upload File", model_class: "Tool" },
+          { id: "ucsc", name: "UCSC Main", model_class: "DataSourceTool" },
+          { id: "label", text: "Build", model_class: "ToolSectionLabel" },
+        ],
+      },
+      { id: "expr", name: "Expression", model_class: "ExpressionTool" },
+      { id: "top", text: "divider", model_class: "ToolSectionLabel" },
+    ];
+    const client = mockClient({ GET: () => ({ data: panel, response: { status: 200 } }) });
+    const top = (await getToolPanel({}, ctxWith(client))) as { entries: PanelSummary[] };
+    expect(top.entries).toEqual([
+      { id: "getext", name: "Get Data", type: "section", tool_count: 2 },
+      { id: "expr", name: "Expression", type: "tool", description: "" },
+    ]);
+    const section = (await getToolPanel({ sectionId: "getext" }, ctxWith(client))) as { tools: SlimTool[] };
+    expect(section.tools.map((t) => t.id)).toEqual(["upload1", "ucsc"]);
   });
 
   it("throws GalaxyNotFoundError on 404", async () => {

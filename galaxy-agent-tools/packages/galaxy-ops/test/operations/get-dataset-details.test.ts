@@ -65,6 +65,25 @@ describe("get_dataset_details", () => {
     expect(out.preview.lines).toMatch(/^\[Binary content - first 4 bytes as hex: fffe0001\]/);
   });
 
+  it("states a line count only when it read the whole dataset", async () => {
+    // A window is not a file: counting the lines in 256 KB of a gigabyte would understate it
+    // by orders of magnitude, so the count is withheld and truncation is reported instead.
+    const filled = "row\n".repeat(64 * 1024); // 256 KB exactly, so the read hit its window
+    const c = client({ id: "d1", state: "ok" }, { chunked: filled });
+    const out: any = await getDatasetDetails({ datasetId: "d1", previewLines: 2 }, ctxWith(c));
+    expect(out.preview).not.toHaveProperty("total_lines");
+    expect(out.preview.truncated).toBe(true);
+    expect(out.preview.lines).toBe("row\nrow");
+  });
+
+  it("drops a trailing line the window may have cut in half", async () => {
+    const content = "a\n".repeat(128 * 1024) + "partial"; // over the window, ends mid-row
+    const c = client({ id: "d1", state: "ok" }, { content: bytes(content) });
+    const out: any = await getDatasetDetails({ datasetId: "d1", previewLines: 2 }, ctxWith(c));
+    expect(out.preview).not.toHaveProperty("total_lines");
+    expect(out.preview.lines).toBe("a\na");
+  });
+
   it("asks for a line-aligned chunk rather than streaming the whole dataset", async () => {
     const seen: any[] = [];
     const c = client({ id: "d1", state: "ok" }, { chunked: "a\nb", seen });

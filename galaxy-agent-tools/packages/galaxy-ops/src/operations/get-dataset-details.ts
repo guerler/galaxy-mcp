@@ -8,13 +8,24 @@ import type { AnyOperation, Operation } from "./types";
 
 export type DatasetDetail = GetJson<"/api/datasets/{dataset_id}">;
 
-/** The head of a dataset's content, and what was left out of it. */
+/** The head of a dataset's content, and what was left out of it.
+ *
+ * `total_lines` is present only when the whole dataset was read. Past the read window the
+ * line count of the window is not the line count of the file, and reporting it as one would
+ * understate a large dataset by orders of magnitude.
+ */
 export interface DatasetPreview {
   lines?: string | null;
   total_lines?: number;
   preview_lines?: number;
   truncated?: boolean;
   error?: string;
+}
+
+/** The bytes read, and whether they are the whole dataset or only its head. */
+interface Head {
+  text: string;
+  whole: boolean;
 }
 
 // A preview is the head of a file, so only the head is fetched: a whole dataset can be
@@ -34,15 +45,22 @@ interface Chunk {
   ck_data?: string;
 }
 
+/** The size of a string on the wire, which is what the read window is measured in. */
+function byteLength(text: string): number {
+  return new TextEncoder().encode(text).byteLength;
+}
+
 /** The head of a dataset as text, read without pulling the whole file into memory. */
-async function head(ctx: GalaxyContext, datasetId: string): Promise<string> {
+async function head(ctx: GalaxyContext, datasetId: string): Promise<Head> {
   // The chunked display route answers a line-aligned prefix, so a multi-gigabyte dataset
   // costs the preview and no more. Not every datatype supports it; those fall back below.
   try {
     const chunk = await legacyGet<Chunk>(ctx, "/api/datasets/{dataset_id}/display", {
       params: { path: { dataset_id: datasetId }, query: { offset: 0, ck_size: PREVIEW_BYTES } },
     });
-    if (typeof chunk?.ck_data === "string") return chunk.ck_data;
+    if (typeof chunk?.ck_data === "string") {
+      return { text: chunk.ck_data, whole: byteLength(chunk.ck_data) < PREVIEW_BYTES };
+    }
   } catch {
     // not chunkable, or the route answered something else -- read the head instead
   }
@@ -53,25 +71,30 @@ async function head(ctx: GalaxyContext, datasetId: string): Promise<string> {
     parseAs: "arrayBuffer",
   });
   if (error || data == null) throw classifyHttp(response.status, error);
-  const bytes = new Uint8Array(data as ArrayBuffer).slice(0, PREVIEW_BYTES);
+  const all = new Uint8Array(data as ArrayBuffer);
+  const whole = all.byteLength <= PREVIEW_BYTES;
+  const bytes = whole ? all : all.slice(0, PREVIEW_BYTES);
   const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
   // U+FFFD in the first bytes means this is not text; a hex head says so without pretending.
   if (text.includes("\uFFFD")) {
     const hex = Array.from(bytes.slice(0, 100), (b) => b.toString(16).padStart(2, "0")).join("");
-    return `[Binary content - first ${Math.min(100, bytes.length)} bytes as hex: ${hex}]`;
+    return { text: `[Binary content - first ${Math.min(100, bytes.length)} bytes as hex: ${hex}]`, whole: true };
   }
-  return text;
+  return { text, whole };
 }
 
 async function preview(ctx: GalaxyContext, datasetId: string, want: number): Promise<DatasetPreview> {
   try {
-    const text = await head(ctx, datasetId);
-    const lines = text.split("\n");
+    const { text, whole } = await head(ctx, datasetId);
+    const read = text.split("\n");
+    // The window can end mid-line, and half a row is not a row.
+    const lines = whole || read.length < 2 ? read : read.slice(0, -1);
     return {
       lines: lines.slice(0, want).join("\n"),
-      total_lines: lines.length,
+      // Only when the whole dataset was read; past the window the file holds more.
+      ...(whole ? { total_lines: lines.length } : {}),
       preview_lines: Math.min(want, lines.length),
-      truncated: lines.length > want,
+      truncated: !whole || lines.length > want,
     };
   } catch (err) {
     // A dataset still running has nothing to read yet. Naming that beats an absent field,

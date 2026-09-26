@@ -105,11 +105,14 @@ function slim(tool: PanelEntry): SlimTool {
 }
 
 const input = {
-  sectionId: z.string().optional().describe("Panel section to open; omit to list the sections themselves"),
-  limit: z.coerce.number().int().positive().max(500).optional().describe("Max entries to return (default 100)"),
-  offset: z.coerce.number().int().min(0).optional().describe("Skip the first N"),
+  sectionId: z
+    .string()
+    .nullish()
+    .describe("Panel section to open; omit, or pass null, to list the sections themselves"),
+  limit: z.coerce.number().int().positive().max(500).nullish().describe("Max entries to return (default 100)"),
+  offset: z.coerce.number().int().min(0).nullish().describe("Skip the first N"),
 };
-type In = { sectionId?: string; limit?: number; offset?: number };
+type In = { sectionId?: string | null; limit?: number | null; offset?: number | null };
 
 function pageOf<T>(rows: T[], i: In, found?: RunFindings): T[] {
   const limit = i.limit ?? DEFAULT_LIMIT;
@@ -123,7 +126,10 @@ async function run(i: In, ctx: GalaxyContext, found?: RunFindings): Promise<Tool
   const entries = Array.isArray(panel) ? panel : [];
   const counted = totals(entries);
 
-  if (i.sectionId === undefined) {
+  // A model routinely sends an optional argument as an explicit null, and nothing validates
+  // the input against the declared shape before run() sees it, so null must read as absent:
+  // taking it for a section id spends a call answering that no section is named "null".
+  if (i.sectionId == null || i.sectionId === "") {
     const summaries = entries
       .filter((e): e is PanelEntry => e !== null && typeof e === "object")
       .map(summarize)

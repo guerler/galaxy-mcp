@@ -139,3 +139,37 @@ describe("get_tool_panel", () => {
     expect(msg.pagination).toEqual({ total: 9 });
   });
 });
+
+describe("get_tool_panel with an explicitly null argument", () => {
+  // Models send optional arguments as explicit nulls, and nothing validates the input
+  // against the declared shape before run() sees it. Taking null for a section id spent a
+  // call answering that no section is named "null", which a live eval paid for every time.
+  const client = () =>
+    mockClient({
+      GET: () => ({
+        data: [{ id: "s1", name: "One", model_class: "ToolSection", elems: [{ id: "t1", model_class: "Tool" }] }],
+        response: { status: 200 },
+      }),
+    });
+
+  it("reads a null section id as no section", async () => {
+    const out = (await getToolPanel({ sectionId: null } as any, ctxWith(client()))) as any;
+    expect(out.entries).toHaveLength(1);
+    expect(out.tool_count).toBe(1);
+  });
+
+  it("reads an empty section id as no section", async () => {
+    const out = (await getToolPanel({ sectionId: "" } as any, ctxWith(client()))) as any;
+    expect(out.entries).toHaveLength(1);
+  });
+
+  it("reads null paging as the defaults", async () => {
+    const out = (await getToolPanel({ sectionId: null, limit: null, offset: null } as any, ctxWith(client()))) as any;
+    expect(out.entries).toHaveLength(1);
+  });
+
+  it("still opens a section that is named", async () => {
+    const out = (await getToolPanel({ sectionId: "s1" }, ctxWith(client()))) as any;
+    expect(out.section_id).toBe("s1");
+  });
+});

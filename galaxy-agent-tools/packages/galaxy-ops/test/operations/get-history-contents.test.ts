@@ -19,13 +19,25 @@ describe("get_history_contents", () => {
     expect((out as any[]).length).toBe(1);
   });
 
-  it("passes the sort order through to Galaxy", async () => {
+  it("passes the sort order through with the v=dev that makes Galaxy honour it", async () => {
+    // Without v=dev Galaxy ignores `order` outright, which made the parameter inert.
     const client = mockClient({
       GET: (_path, init) => {
         expect(init.params.query.order).toBe("hid-dsc");
+        expect(init.params.query.v).toBe("dev");
         return { data: [], response: { status: 200 } };
       },
     });
     await getHistoryContents({ historyId: "h1", order: "hid-dsc" }, ctxWith(client));
+  });
+
+  it("orders by hid ascending when the caller says nothing", async () => {
+    const client = mockClient({
+      GET: (_path, init) => {
+        expect(init.params.query.order).toBe("hid-asc");
+        return { data: [], response: { status: 200 } };
+      },
+    });
+    await getHistoryContents({ historyId: "h1" }, ctxWith(client));
   });
 });

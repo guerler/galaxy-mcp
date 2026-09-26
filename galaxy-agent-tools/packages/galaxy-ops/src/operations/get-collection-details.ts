@@ -18,9 +18,12 @@ async function run(i: In, ctx: GalaxyContext): Promise<CollectionDetail> {
     params: { path: { hdca_id: i.collectionId } },
   });
   if (error || !data) throw classifyHttp(response.status, error);
-  if (i.maxElements != null) {
-    const d = data as { elements?: unknown[] };
-    if (Array.isArray(d.elements)) d.elements = d.elements.slice(0, i.maxElements);
+  // A silently shortened list reads as the whole collection, so say when elements were left out.
+  const d = data as { elements?: unknown[]; elements_truncated?: boolean; elements_shown?: number };
+  if (i.maxElements != null && Array.isArray(d.elements) && d.elements.length > i.maxElements) {
+    d.elements = d.elements.slice(0, i.maxElements);
+    d.elements_truncated = true;
+    d.elements_shown = i.maxElements;
   }
   return data as CollectionDetail;
 }

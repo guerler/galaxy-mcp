@@ -19,3 +19,24 @@ describe("get_collection_details", () => {
     expect((out as any).elements.length).toBe(2);
   });
 });
+
+describe("get_collection_details truncation", () => {
+  const collection = (n: number) => ({ id: "c1", element_count: n, elements: Array.from({ length: n }, (_, k) => k) });
+  const ctxFor = (n: number): any => ({
+    client: mockClient({ GET: () => ({ data: collection(n), response: { status: 200 } }) }),
+    poll: DEFAULT_POLL,
+  });
+
+  it("says when it left elements out", async () => {
+    const out: any = await getCollectionDetails({ collectionId: "c1", maxElements: 2 }, ctxFor(5));
+    expect(out.elements).toHaveLength(2);
+    expect(out.elements_truncated).toBe(true);
+    expect(out.elements_shown).toBe(2);
+  });
+
+  it("stays quiet when the whole list fits", async () => {
+    const out: any = await getCollectionDetails({ collectionId: "c1", maxElements: 9 }, ctxFor(3));
+    expect(out.elements).toHaveLength(3);
+    expect(out).not.toHaveProperty("elements_truncated");
+  });
+});

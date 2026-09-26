@@ -3,7 +3,7 @@ import type { GalaxyContext } from "../context";
 import { classifyHttp } from "../errors";
 import type { PageSummary } from "./pages-common";
 import { register, runOperation } from "./registry";
-import type { AnyOperation, Operation, RunFindings } from "./types";
+import type { AnyOperation, Operation, Pagination, RunFindings } from "./types";
 
 const DEFAULT_LIMIT = 100;
 
@@ -67,9 +67,11 @@ export const listPagesOp: Operation<typeof input, PageSummary[]> = {
   run,
   project: (pages, i, found) => {
     const total = found?.pagination?.total;
+    // The paging run() used, which is what the caller asked for or the default it applied.
+    const asked: Pagination = { offset: Number(i.offset ?? 0), limit: Number(i.limit ?? DEFAULT_LIMIT) };
     return {
       message: total != null ? `${pages.length} of ${total} page(s)` : `${pages.length} page(s)`,
-      pagination: found?.pagination ?? { offset: i.offset ?? 0, limit: i.limit ?? DEFAULT_LIMIT },
+      pagination: found?.pagination ?? asked,
     };
   },
 };

@@ -16,7 +16,13 @@ export type OperationDomain =
   | "pages";
 
 /** The parsed input object derived from an op's raw Zod shape. */
-export type InputOf<Shape extends ZodRawShape> = z.infer<ZodObject<Shape>>;
+/** What a caller hands an operation.
+ *
+ * The input side, not the parsed side: nothing validates or coerces before run() sees the
+ * arguments, so a declared `.default()` documents the value run() applies rather than one
+ * zod supplies. Using the output type here would demand callers pass what they may omit.
+ */
+export type InputOf<Shape extends ZodRawShape> = z.input<ZodObject<Shape>>;
 
 export interface Pagination {
   total?: number;

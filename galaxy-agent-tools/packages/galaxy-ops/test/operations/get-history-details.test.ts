@@ -13,11 +13,27 @@ describe("get_history_details", () => {
       GET: (path, init) => {
         expect(path).toBe("/api/histories/{history_id}");
         expect(init.params.path.history_id).toBe("h1");
-        return { data: { id: "h1", name: "alpha", state: "ok" }, response: { status: 200 } };
+        return { data: { id: "h1", name: "alpha", state: "ok", count: 7 }, response: { status: 200 } };
       },
     });
     const out = await getHistoryDetails({ historyId: "h1" }, ctxWith(client));
-    expect((out as any).id).toBe("h1");
+    expect((out.history as any).id).toBe("h1");
+  });
+
+  it("counts the history's items from the history rather than by listing them", async () => {
+    const client = mockClient({
+      GET: () => ({ data: { id: "h1", count: 7 }, response: { status: 200 } }),
+    });
+    const out = await getHistoryDetails({ historyId: "h1" }, ctxWith(client));
+    expect(out.contents_summary.total_items).toBe(7);
+    expect(out.contents_summary.note).toMatch(/get_history_contents/);
+    expect(getHistoryDetailsOp.project!(out, { historyId: "h1" }).message).toContain("7 item(s)");
+  });
+
+  it("reports no items when the server does not count them", async () => {
+    const client = mockClient({ GET: () => ({ data: { id: "h1" }, response: { status: 200 } }) });
+    const out = await getHistoryDetails({ historyId: "h1" }, ctxWith(client));
+    expect(out.contents_summary.total_items).toBe(0);
   });
   it("throws NotFound on 404", async () => {
     const client = mockClient({ GET: () => ({ error: { err_msg: "no" }, response: { status: 404 } }) });

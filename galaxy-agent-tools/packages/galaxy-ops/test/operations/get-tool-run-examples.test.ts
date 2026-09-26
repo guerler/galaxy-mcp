@@ -23,7 +23,7 @@ describe("get_tool_run_examples", () => {
     const out = await getToolRunExamples({ toolId: "fastqc" }, ctxWith(client));
     expect(out.tool_id).toBe("fastqc");
     expect(out.test_cases).toEqual(TEST_CASES);
-    expect(out.requested_version).toBeUndefined();
+    expect(out.requested_version).toBeNull();
   });
 
   it("passes tool_version in query when given", async () => {
@@ -41,5 +41,19 @@ describe("get_tool_run_examples", () => {
     const result = { tool_id: "fastqc", test_cases: [{}, {}] };
     const msg = getToolRunExamplesOp.project!(result as any, { toolId: "fastqc" });
     expect(msg.message).toBe("2 test case(s) for fastqc");
+  });
+});
+
+describe("get_tool_run_examples version echo", () => {
+  const client = () => mockClient({ GET: () => ({ data: [{ inputs: {} }], response: { status: 200 } }) });
+
+  it("states the requested version as null when none was named", async () => {
+    const out = await getToolRunExamples({ toolId: "cat1" }, ctxWith(client()));
+    expect(out).toHaveProperty("requested_version", null);
+  });
+
+  it("echoes the version the caller asked for", async () => {
+    const out = await getToolRunExamples({ toolId: "cat1", toolVersion: "1.0.0" }, ctxWith(client()));
+    expect(out.requested_version).toBe("1.0.0");
   });
 });

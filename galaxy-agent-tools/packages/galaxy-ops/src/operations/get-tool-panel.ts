@@ -33,9 +33,15 @@ export interface SlimTool {
   versions: unknown[];
 }
 
+/** What the server holds, counted over the whole panel rather than over the page. */
+export interface PanelTotals {
+  tool_count: number;
+  section_count: number;
+}
+
 export type ToolPanel =
-  | { entries: PanelSummary[] }
-  | { section_id: string; section_name: string; tools: SlimTool[] };
+  | ({ entries: PanelSummary[] } & PanelTotals)
+  | ({ section_id: string; section_name: string; tools: SlimTool[] } & PanelTotals);
 
 // The whole panel is megabytes on a production server, so it is never returned whole.
 const DEFAULT_LIMIT = 100;
@@ -65,6 +71,30 @@ function summarize(entry: PanelEntry): PanelSummary | null {
   return { id: entry.id ?? "", name: entry.name ?? "", type: "tool", description: entry.description ?? "" };
 }
 
+/** Every tool and section in a panel subtree, counted through nested sections.
+ *
+ * Counted over the whole panel and reported on every answer, page or section: an agent asked
+ * how many tools a server has must not have to add up the pages, and the top level is mostly
+ * sections, so counting the entries undercounts by an order of magnitude.
+ */
+function totals(entries: unknown[]): PanelTotals {
+  let tool_count = 0;
+  let section_count = 0;
+  for (const entry of entries) {
+    if (entry === null || typeof entry !== "object") continue;
+    const e = entry as PanelEntry;
+    if (e.elems !== undefined) {
+      section_count += 1;
+      const inner = totals(elemsOf(e));
+      tool_count += inner.tool_count;
+      section_count += inner.section_count;
+    } else if (isPanelTool(e)) {
+      tool_count += 1;
+    }
+  }
+  return { tool_count, section_count };
+}
+
 function slim(tool: PanelEntry): SlimTool {
   return {
     id: tool.id ?? "",
@@ -91,13 +121,14 @@ function pageOf<T>(rows: T[], i: In, found?: RunFindings): T[] {
 async function run(i: In, ctx: GalaxyContext, found?: RunFindings): Promise<ToolPanel> {
   const panel = await legacyGet<PanelEntry[]>(ctx, "/api/tools", { params: { query: { in_panel: true } } });
   const entries = Array.isArray(panel) ? panel : [];
+  const counted = totals(entries);
 
   if (i.sectionId === undefined) {
     const summaries = entries
       .filter((e): e is PanelEntry => e !== null && typeof e === "object")
       .map(summarize)
       .filter((s): s is PanelSummary => s !== null);
-    return { entries: pageOf(summaries, i, found) };
+    return { ...counted, entries: pageOf(summaries, i, found) };
   }
 
   const section = entries.find((e) => e && typeof e === "object" && e.id === i.sectionId && e.elems !== undefined);
@@ -108,14 +139,15 @@ async function run(i: In, ctx: GalaxyContext, found?: RunFindings): Promise<Tool
     );
   }
   const tools = elemsOf(section).filter(isPanelTool).map(slim);
-  return { section_id: i.sectionId, section_name: section.name ?? "", tools: pageOf(tools, i, found) };
+  return { ...counted, section_id: i.sectionId, section_name: section.name ?? "", tools: pageOf(tools, i, found) };
 }
 
 export const getToolPanelOp: Operation<typeof input, ToolPanel> = {
   name: "get_tool_panel",
   domain: "tools",
   summary:
-    "Browse the Galaxy tool panel one level at a time. With no arguments it lists the top-level " +
+    "Browse the Galaxy tool panel one level at a time. Every answer carries tool_count, how many " +
+    "tools the server has installed, and section_count. With no arguments it lists the top-level " +
     "entries, each section with the number of tools in it; pass section_id to list a section's tools.",
   input,
   run,

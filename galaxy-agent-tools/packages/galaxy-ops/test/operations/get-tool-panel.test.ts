@@ -32,6 +32,43 @@ const panelClient = () =>
   });
 
 describe("get_tool_panel", () => {
+  it("reports what the server holds, not what the page shows", async () => {
+    // Olit's contract points the model at tool_count to answer "how many tools are available",
+    // and warns it off counting the entries: the top level is mostly sections.
+    const out = (await getToolPanel({}, ctxWith(panelClient()))) as any;
+    expect(out.tool_count).toBe(2);
+    expect(out.section_count).toBe(2);
+    expect(out.entries).toHaveLength(3);
+  });
+
+  it("counts the same totals through nested sections", async () => {
+    const nested = [
+      {
+        id: "outer",
+        name: "Outer",
+        model_class: "ToolSection",
+        elems: [
+          { id: "t1", name: "One", model_class: "Tool" },
+          { id: "inner", name: "Inner", model_class: "ToolSection", elems: [{ id: "t2", model_class: "Tool" }] },
+        ],
+      },
+    ];
+    const client = mockClient({ GET: () => ({ data: nested, response: { status: 200 } }) });
+    const out = (await getToolPanel({}, ctxWith(client))) as any;
+    expect(out).toMatchObject({ tool_count: 2, section_count: 2 });
+  });
+
+  it("carries the totals when one section is opened", async () => {
+    const out = (await getToolPanel({ sectionId: "section1" }, ctxWith(panelClient()))) as any;
+    expect(out).toMatchObject({ tool_count: 2, section_count: 2 });
+  });
+
+  it("keeps the totals whole when the page is narrowed", async () => {
+    const out = (await getToolPanel({ limit: 1 }, ctxWith(panelClient()))) as any;
+    expect(out.entries).toHaveLength(1);
+    expect(out.tool_count).toBe(2);
+  });
+
   it("summarizes the top level, counting a section's tools without listing them", async () => {
     const out = (await getToolPanel({}, ctxWith(panelClient()))) as { entries: unknown[] };
     expect(out.entries).toEqual([
@@ -43,7 +80,7 @@ describe("get_tool_panel", () => {
 
   it("opens one section, slimmed to what picking a tool needs", async () => {
     const out = await getToolPanel({ sectionId: "section1" }, ctxWith(panelClient()));
-    expect(out).toEqual({
+    expect(out).toMatchObject({
       section_id: "section1",
       section_name: "Genomics",
       tools: [{ id: "fastqc", name: "FastQC", description: "read qc", versions: ["0.74"] }],

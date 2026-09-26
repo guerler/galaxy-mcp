@@ -19,6 +19,22 @@ const WF_B: IwcWorkflow = {
 beforeEach(() => __resetIwcCacheForTest());
 
 describe("get_iwc_workflows", () => {
+  it("returns summaries, never the definition a raw entry carries", async () => {
+    __setIwcCacheForTest([WF_A]);
+    const out = await getIwcWorkflows({} as any, ctxWith(mockClient({})));
+    expect(out[0]).not.toHaveProperty("definition");
+    expect(out[0]).toMatchObject({ trsID: WF_A.trsID, name: "Alpha" });
+  });
+
+  it("pages, and reports how many there are altogether", async () => {
+    __setIwcCacheForTest([WF_A, WF_B]);
+    const found: any = {};
+    const out = await getIwcWorkflowsOp.run({ limit: 1, offset: 1 } as any, ctxWith(mockClient({})), found);
+    expect(out).toHaveLength(1);
+    expect(out[0].trsID).toBe(WF_B.trsID);
+    expect(found.pagination).toEqual({ total: 2, limit: 1, offset: 1 });
+  });
+
   it("returns all workflows from the primed cache", async () => {
     __setIwcCacheForTest([WF_A, WF_B]);
     const out = await getIwcWorkflows({} as any, ctxWith(mockClient({})));

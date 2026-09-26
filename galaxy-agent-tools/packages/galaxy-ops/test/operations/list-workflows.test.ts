@@ -21,14 +21,20 @@ describe("list_workflows", () => {
 
 describe("list_workflows name filter", () => {
   const ROWS = [
-    { id: "w1", name: "RNA-seq", tags: ["rnaseq"] },
-    { id: "w2", name: "Assembly", tags: ["long-read", "qc"] },
+    { id: "w1", name: "RNA-seq" },
+    { id: "w2", name: "Assembly" },
   ];
   const ctx: any = { client: mockClient({ GET: () => ({ data: ROWS, response: { status: 200 } }) }), poll: DEFAULT_POLL };
 
-  it("matches a tag as well as a name", async () => {
-    expect(await listWorkflows({ name: "long-read" }, ctx)).toEqual([ROWS[1]]);
+  it("matches a substring of the name, whatever its case", async () => {
     expect(await listWorkflows({ name: "assem" }, ctx)).toEqual([ROWS[1]]);
+    expect(await listWorkflows({ name: "RNA" }, ctx)).toEqual([ROWS[0]]);
+  });
+
+  it("keeps a name a query cannot spell out of the alphabet it is written in", async () => {
+    const rows = [{ id: "w1", name: "\u89e3\u6790\u30d1\u30a4\u30d7\u30e9\u30a4\u30f3" }, { id: "w2", name: "Assembly" }];
+    const jp: any = { client: mockClient({ GET: () => ({ data: rows, response: { status: 200 } }) }), poll: DEFAULT_POLL };
+    expect(await listWorkflows({ name: "\u89e3\u6790" }, jp)).toEqual([rows[0]]);
   });
 
   it("returns everything when no name is given", async () => {
@@ -38,9 +44,9 @@ describe("list_workflows name filter", () => {
 
 describe("list_workflows id filter and paging", () => {
   const ROWS = [
-    { id: "w1", name: "one", tags: [] },
-    { id: "w2", name: "two", tags: [] },
-    { id: "w3", name: "three", tags: [] },
+    { id: "w1", name: "one" },
+    { id: "w2", name: "two" },
+    { id: "w3", name: "three" },
   ];
   const ctx: any = { client: mockClient({ GET: () => ({ data: ROWS, response: { status: 200 } }) }), poll: DEFAULT_POLL };
 
@@ -60,32 +66,5 @@ describe("list_workflows id filter and paging", () => {
     const found: any = {};
     expect(await listWorkflowsOp.run({} as any, ctx, found)).toHaveLength(3);
     expect(found.pagination).toBeUndefined();
-  });
-});
-
-describe("list_workflows separator-insensitive matching", () => {
-  const ROWS = [
-    { id: "w1", name: "RNA-seq quantification", tags: [] },
-    { id: "w2", name: "RNAseq differential expression", tags: [] },
-    { id: "w3", name: "Read quality control", tags: ["long-read", "qc"] },
-  ];
-  const ctx: any = { client: mockClient({ GET: () => ({ data: ROWS, response: { status: 200 } }) }), poll: DEFAULT_POLL };
-  const names = async (name: string) => ((await listWorkflows({ name }, ctx)) as any[]).map((w) => w.id);
-
-  it("reads a spaced query as a hyphenated name", async () => {
-    expect(await names("rna seq")).toEqual(["w1", "w2"]);
-  });
-
-  it("agrees across separator variants", async () => {
-    expect(await names("rna-seq")).toEqual(await names("rnaseq"));
-    expect(await names("rnaseq")).toEqual(await names("rna seq"));
-  });
-
-  it("matches a tag across separators too", async () => {
-    expect(await names("long read")).toEqual(["w3"]);
-  });
-
-  it("matches nothing unrelated", async () => {
-    expect(await names("proteomics")).toEqual([]);
   });
 });

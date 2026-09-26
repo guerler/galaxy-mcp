@@ -7,13 +7,8 @@ import type { AnyOperation, Operation, Pagination, RunFindings } from "./types";
 
 export type Workflows = GetJson<"/api/workflows">;
 
-/** Letters and digits only, so "rna seq", "rna-seq" and "RNAseq" are one query. */
-function alnum(text: string | undefined): string {
-  return (text ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
 const input = {
-  name: z.string().optional().describe("Case-insensitive substring filter on workflow name or tag"),
+  name: z.string().optional().describe("Case-insensitive substring filter on workflow name"),
   published: z.boolean().optional().describe("Only published workflows"),
   workflowId: z.string().optional().describe("Keep only the workflow with this id"),
   limit: z.coerce.number().int().positive().optional().describe("Max workflows to return"),
@@ -26,16 +21,12 @@ async function run(i: In, ctx: GalaxyContext, found?: RunFindings): Promise<Work
     params: { query: { show_published: i.published ?? null } },
   });
   if (error || !data) throw classifyHttp(response.status, error);
-  let rows = data as Array<{ id?: string; name?: string; tags?: string[] }>;
+  let rows = data as Array<{ id?: string; name?: string }>;
   if (i.workflowId) rows = rows.filter((w) => w.id === i.workflowId);
   if (i.name) {
-    // Galaxy's own ?search drops short terms, so the filter is applied here -- over tags as
-    // well as the name, because a workflow is as often found by its tag as by what it is called.
-    const needle = alnum(i.name);
-    rows = rows.filter((w) => {
-      const named = alnum(w.name).includes(needle);
-      return named || (w.tags ?? []).some((t) => alnum(String(t)).includes(needle));
-    });
+    // Galaxy's own ?search drops short terms, so the filter is applied here.
+    const needle = i.name.toLowerCase();
+    rows = rows.filter((w) => (w.name ?? "").toLowerCase().includes(needle));
   }
   // Every filter is applied here, so the total is what matched rather than what Galaxy holds.
   if (i.limit == null && i.offset == null) return rows as Workflows;
@@ -48,7 +39,7 @@ async function run(i: In, ctx: GalaxyContext, found?: RunFindings): Promise<Work
 export const listWorkflowsOp: Operation<typeof input, Workflows> = {
   name: "list_workflows",
   domain: "workflows",
-  summary: "List stored workflows (id, name). Optional name-or-tag substring, id, published filter and paging.",
+  summary: "List stored workflows (id, name). Optional name substring, id, published filter and paging.",
   input,
   run,
   project: (ws, _i, found) => {

@@ -61,9 +61,10 @@ export async function runOperation<Shape extends ZodRawShape, O>(
   op: Operation<Shape, O>,
   input: InputOf<Shape>,
   ctx: GalaxyContext,
+  found?: RunFindings,
 ): Promise<O> {
   const pinned = await guardVersion(ctx, op);
-  return op.run(input, pinned);
+  return op.run(input, pinned, found);
 }
 
 /** The line a surface shows for an op: its summary, and what it needs from the server. */
@@ -79,8 +80,7 @@ export async function runWithEnvelope<Shape extends ZodRawShape, O>(
 ): Promise<GalaxyResult<O>> {
   const found: RunFindings = {};
   try {
-    const pinned = await guardVersion(ctx, op);
-    const data = await op.run(input, pinned, found);
+    const data = await runOperation(op, input, ctx, found);
     const meta = op.project?.(data, input, found) ?? {};
     return { data, success: true, ...meta };
   } catch (err) {

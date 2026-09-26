@@ -27,4 +27,23 @@ describe("get_invocations", () => {
       GalaxyNotFoundError,
     );
   });
+
+  it("lists invocations when no id is given, passing the filters through", async () => {
+    const client = mockClient({
+      GET: (path, init) => {
+        expect(path).toBe("/api/invocations");
+        expect(init.params.query).toMatchObject({ workflow_id: "w1", history_id: "h1", limit: 2, view: "collection" });
+        return { data: [{ id: "inv1" }, { id: "inv2" }], response: { status: 200 } };
+      },
+    });
+    const out = await getInvocations({ workflowId: "w1", historyId: "h1", limit: 2 }, ctxWith(client));
+    expect(out).toHaveLength(2);
+  });
+
+  it("projects a listing by count and a single invocation by state", () => {
+    expect(getInvocationsOp.project!([{}, {}] as any, {})).toEqual({ message: "2 workflow invocation(s)" });
+    expect(getInvocationsOp.project!({ id: "inv1", state: "ok" } as any, {}).message).toBe(
+      "Invocation inv1 state=ok",
+    );
+  });
 });

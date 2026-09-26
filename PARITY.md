@@ -13,10 +13,10 @@ Every difference carries the status and the reason recorded in `galaxy-agent-too
 | `intentional` | `4` |
 | `pending-port` | `16` |
 | `pending-decision` | `0` |
-| `unreviewed-gap` | `22` |
-| **total** | `42` |
+| `unreviewed-gap` | `21` |
+| **total** | `41` |
 
-`unreviewed-gap` is the status nobody has ruled on yet. The check holds the registry to the 22 it declares, so the count cannot drift from the number; raising that number is an edit somebody has to make in the diff, and it is meant to come down, never up.
+`unreviewed-gap` is the status nobody has ruled on yet. The check holds the registry to the 21 it declares, so the count cannot drift from the number; raising that number is an edit somebody has to make in the diff, and it is meant to come down, never up.
 
 ## Tools
 
@@ -34,7 +34,6 @@ A row per tool, then a row per parameter the surfaces disagree about. `--` means
 | `download_dataset` | `require_ok_state` | `type=boolean required=false default=true` | `type=boolean required=false default=none` | `default-mismatch` | `unreviewed-gap` | TS applies the same default in run() but does not declare it in the advertised schema, so an agent reading the tool cannot see it. |
 | `download_dataset` | `use_default_filename` | `type=boolean required=false default=true` | -- | `missing-ts-param` | `unreviewed-gap` | Python can write next to the dataset's own name; TS only writes to the exact filePath it is given. |
 | `get_collection_details` |  | `read (tag)` | `read (hint)` |  |  |  |
-| `get_collection_details` | `max_elements` | `type=integer required=false default=100` | `type=integer required=false default=none` | `default-mismatch` | `unreviewed-gap` | Python always truncates the element list to 100; TS truncates only when asked, so the same call can return a much larger payload. |
 | `get_dataset_details` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_histories` |  | `read (tag)` | `read (hint)` |  |  |  |
 | `get_histories` | `offset` | `type=integer required=false default=0` | `type=integer required=false default=none` | `default-mismatch` | `unreviewed-gap` | TS leaves offset unset and takes Galaxy's default of 0, which is the same value Python sends; only the declaration differs. |

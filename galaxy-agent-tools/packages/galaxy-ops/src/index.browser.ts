@@ -10,7 +10,12 @@ export {
   type GalaxyVersion,
   type VersionRequirement,
 } from "./version";
-export { isJobTerminal, isJobSuccess } from "./terminal-states";
+export {
+  isJobTerminal,
+  isJobSuccess,
+  DATASET_TERMINAL_STATES,
+  INVOCATION_FINISHED_STATES,
+} from "./terminal-states";
 export {
   invocationOutcome,
   withOutcome,

@@ -72,6 +72,7 @@ const ARGS: Record<string, Record<string, unknown>> = {
   get_tool_panel: {},
   get_collection_details: { collectionId: "c1" },
   get_history_details: { historyId: "h1" },
+  get_workflow_input_template: { workflowId: "w1" },
   get_history_contents: { historyId: "h1" },
   get_histories: {},
   list_history_ids: {},

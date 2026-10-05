@@ -69,14 +69,6 @@
       "reason": "Python's result carries a next-steps note and the TS op builds none."
     },
     {
-      "tool": "get_collection_details",
-      "param": null,
-      "kind": "result-shape",
-      "observed": "python=object[collection, collection_id, elements, elements_truncated, history_content_type, note] typescript=undeclared",
-      "status": "pending-decision",
-      "reason": "Python flattens the collection and its members into keys of its own. The TS op returns Galaxy's collection unchanged, which is the rule get_history_details writes down, but nothing records that decision for this tool."
-    },
-    {
       "tool": "get_dataset_details",
       "param": null,
       "kind": "result-shape",
@@ -93,12 +85,12 @@
       "reason": "No known difference: both answer with the rows in data, and both report a window only when given a limit. Python's data is bioblend's return value, which the manifest generator cannot read, so only the TS side states a kind."
     },
     {
-      "tool": "get_history_details",
+      "tool": "get_workflow_input_template",
       "param": null,
       "kind": "result-shape",
-      "observed": "python=object[contents_summary, history] typescript=undeclared",
+      "observed": "python=undeclared typescript=object[guide, inputs_by, inputs_template, slots, warnings]",
       "status": "intentional",
-      "reason": "Python answers with the history and a count of its contents under keys of its own. The TS op returns the history exactly as Galaxy sent it and records the count beside the call instead, which is the choice its own comment states, so it declares no shape."
+      "reason": "No known difference: both answer with the same five keys in every golden case. Python's data is a template its builder returns, which the manifest generator cannot read, so only the TS side states the keys."
     },
     {
       "tool": "list_page_revisions",

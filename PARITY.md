@@ -18,9 +18,9 @@ Two differences with that server are recorded once here rather than as a row per
 | --- | --- |
 | `intentional` | `8` |
 | `pending-port` | `1` |
-| `pending-decision` | `2` |
+| `pending-decision` | `1` |
 | `unreviewed-gap` | `0` |
-| **total** | `11` |
+| **total** | `10` |
 
 `unreviewed-gap` is the status nobody has ruled on yet. The check holds the registry to the 0 it declares, so the count cannot drift from the number; raising that number is an edit somebody has to make in the diff, and it is meant to come down, never up.
 
@@ -70,7 +70,7 @@ A row per tool, then a row per parameter the surfaces disagree about. `--` means
 | `download_dataset` | `note` |  | -- | -- | -- | `result-shape` | `pending-port` | Python's result carries a next-steps note and the TS op builds none. |
 | `download_dataset` | `require_ok_state` |  | `type=boolean required=false default=true` | `type=boolean required=false default=true` | -- | `vs built-in: missing-builtin-param` | `unreviewed-gap` | Both refuse a dataset that is not ok; only ours can be told not to. AgentOperationsManager.download_dataset returns an error and no download URL whenever the state is anything but `ok`, unconditionally -- so what the built-in is missing is the escape hatch, not the guard. Reconciling this one is a question of whether an agent should ever be able to ask for a dataset that is still running or failed, not of adding a check there. |
 | `download_dataset` | `use_default_filename` |  | `type=boolean required=false default=true` | `type=boolean required=false default=true` | -- | `vs built-in: missing-builtin-param` | `unreviewed-gap` | Ours can name the file after the dataset; Galaxy's has no local file to name. |
-| `get_collection_details` |  | `6` | `read (tag)` | `read (hint)` | `write (mcp default)` | `result-shape` | `pending-decision` | Python flattens the collection and its members into keys of its own. The TS op returns Galaxy's collection unchanged, which is the rule get_history_details writes down, but nothing records that decision for this tool. |
+| `get_collection_details` |  | `6` | `read (tag)` | `read (hint)` | `write (mcp default)` |  |  |  |
 | `get_collection_details` | `max_elements` |  | `type=integer required=false default=100` | `type=integer required=false default=100` | `type=integer required=false default=500` | `vs built-in: default-mismatch` | `unreviewed-gap` | Both cap the elements returned and the caps differ: 100 here, 500 there. |
 | `get_dataset_details` |  | `8` | `read (tag)` | `read (hint)` | `write (mcp default)` | `result-shape` | `pending-decision` | Python nests the dataset under a `dataset` key beside `dataset_id`; the TS op returns Galaxy's dataset at the top level with `preview` added. Python's key list is not stated because `preview` is added conditionally after the literal. |
 | `get_dataset_details` | `include_preview` |  | `type=boolean required=false default=true` | `type=boolean required=false default=true` | -- | `vs built-in: missing-builtin-param` | `unreviewed-gap` | Ours can put the first N lines of the dataset's text in the answer, read through get_content_as_text; Galaxy's serialises the `detailed` view, which carries `peek` -- the stored few-line snippet Galaxy renders for text-like datatypes -- but no way to ask for the content itself or to leave the peek out. |
@@ -81,7 +81,7 @@ A row per tool, then a row per parameter the surfaces disagree about. `--` means
 | `get_history_contents` | `deleted` |  | `type=boolean required=false default=false` | `type=boolean required=false default=false` | `type=boolean required=false default=none` | `vs built-in: default-mismatch` | `unreviewed-gap` | Ours defaults to excluding deleted items; Galaxy's passes None through and lets the API decide. |
 | `get_history_contents` | `order` |  | `type=enum<"create_time-asc"\|"create_time-dsc"\|"hid-asc"\|"hid-dsc"\|"name-asc"\|"update_time-dsc">&string required=false default="hid-asc"` | `type=enum<"create_time-asc"\|"create_time-dsc"\|"hid-asc"\|"hid-dsc"\|"name-asc"\|"update_time-dsc">&string required=false default="hid-asc"` | `type=string required=false default="hid-asc"` | `vs built-in: type-mismatch` | `intentional` | Ours takes the six orders it documents and refuses anything else before a request; Galaxy's passes any string to parse_order_by, which reads a bare 'hid' as descending and answers an unknown order with a 400. |
 | `get_history_contents` | `visible` |  | `type=boolean required=false default=true` | `type=boolean required=false default=true` | `type=boolean required=false default=none` | `vs built-in: default-mismatch` | `unreviewed-gap` | Ours defaults to visible items only; Galaxy's passes None through and lets the API decide. |
-| `get_history_details` |  | `4` | `read (tag)` | `read (hint)` | `write (mcp default)` | `result-shape` | `intentional` | Python answers with the history and a count of its contents under keys of its own. The TS op returns the history exactly as Galaxy sent it and records the count beside the call instead, which is the choice its own comment states, so it declares no shape. |
+| `get_history_details` |  | `4` | `read (tag)` | `read (hint)` | `write (mcp default)` |  |  |  |
 | `get_invocation_details` |  | `0` | -- | -- | `write (mcp default)` | `vs built-in: missing-py-tool` | `unreviewed-gap` | Only Galaxy's. The same reading exists here inside get_invocations, which returns one invocation's detail when it is given invocation_id. |
 | `get_invocations` |  | `7` | `read (tag)` | `read (hint)` | `write (mcp default)` |  |  |  |
 | `get_invocations` | `invocation_id` |  | `type=string required=false default=none` | `type=string required=false default=none` | -- | `vs built-in: missing-builtin-param` | `unreviewed-gap` | Ours takes an invocation id and returns that one invocation's detail; Galaxy's splits that into get_invocation_details. |
@@ -108,7 +108,7 @@ A row per tool, then a row per parameter the surfaces disagree about. `--` means
 | `get_tool_run_examples` |  | `4` | `read (tag)` | `read (hint)` | `write (mcp default)` |  |  |  |
 | `get_user` |  | `4` | `read (tag)` | `read (hint)` | `write (mcp default)` |  |  |  |
 | `get_workflow_details` |  | `5` | `read (tag)` | `read (hint)` | `write (mcp default)` |  |  |  |
-| `get_workflow_input_template` |  | `8` | `read (tag)` | `read (hint)` | -- | `vs built-in: missing-builtin-tool` | `unreviewed-gap` | Only here. Same gap before invoke_workflow: no template, no run guide, no input validation on that side. |
+| `get_workflow_input_template` |  | `8` | `read (tag)` | `read (hint)` | -- | `result-shape`<br>`vs built-in: missing-builtin-tool` | `intentional`<br>`unreviewed-gap` | No known difference: both answer with the same five keys in every golden case. Python's data is a template its builder returns, which the manifest generator cannot read, so only the TS side states the keys.<br>Only here. Same gap before invoke_workflow: no template, no run guide, no input validation on that side. |
 | `import_workflow_from_iwc` |  | `4` | `write (tag)` | `write (hint)` | `write (mcp default)` |  |  |  |
 | `invoke_workflow` |  | `4` | `write (tag)` | `write (hint)` | `write (mcp default)` |  |  |  |
 | `invoke_workflow` | `inputs` |  | `type=anyOf<object\|string> required=false default=none` | `type=anyOf<object\|string> required=false default=none` | `type=object required=false default=none` | `vs built-in: type-mismatch` | `unreviewed-gap` | Ours also accepts the JSON text of the object, because that is what a CLI flag and some clients send; Galaxy's takes the object only. |

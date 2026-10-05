@@ -6,6 +6,30 @@ entry covers all three; where something only affects one surface, it says which.
 
 ## 0.3.1 (unreleased)
 
+### What a caller sees differently
+
+These packages are still evolving and promise no stable contract yet; this lists where an answer
+or an accepted argument changed, so a caller can adjust.
+
+- `get_history_contents` rows no longer carry `dataset_id`. It is the id of the Dataset beneath
+  each history item, which no operation takes; offered beside `id`, it invites being used as one,
+  and as an input it resolves to an unrelated dataset rather than failing. Use `id`.
+- `get_history_contents` rows are the contents index's summary view. Dataset rows carry the same
+  keys as before; collection rows gain `type_id` and `store_times_summary` and no longer carry
+  `model_class`, `populated` or `column_definitions`.
+- `get_history_contents` takes `order` as a sort key with its direction spelled out (`hid-asc`,
+  `name-dsc`, ...) and refuses a bare key, which used to be read as ascending, or an unknown one
+  before a request.
+- A `get_history_contents` page can hold fewer than `limit` items when it would exceed the output
+  budget; its `pagination` says so and names the offset to continue from.
+- `update_page` answers with the page's new `content_hash`. It refuses content whose directives
+  name an object by something that is not an encoded id, whole-page writes included, and a
+  section edit on a page authored as HTML.
+- `get_invocations` given an invocation id makes one more request, for its jobs summary. Listings
+  make none.
+- `waitForJob` (library only) ends on a skipped or stopped job with `JobFailedError` naming the
+  state, instead of polling until the timeout.
+
 ### `get_history_contents` lets Galaxy page the history
 
 Both surfaces ask the contents index for one window -- filtered, sorted and cut by Galaxy --

@@ -6,6 +6,18 @@ entry covers all three; where something only affects one surface, it says which.
 
 ## Unreleased
 
+### `update_page` replaces one section, and refuses a write against a stale hash
+
+Both surfaces take `section_heading` with `section_content` to replace one section by its
+heading line, appending it when the page has no such heading -- `applySectionEdit` from Galaxy's
+own page editor (`client/src/components/PageEditor/sectionDiffUtils.ts`). `expect_hash`, the
+`content_hash` `get_page` returned, makes the write fail when the page changed since: the
+failure names the hash it has now and says to read it again. Galaxy's PUT has no precondition,
+so the read and the write are two requests. Content whose directives name an object by something
+that is not an encoded id (a hid, a name) is refused before anything is sent, for the arguments
+Galaxy decodes (`lib/galaxy/managers/markdown_util.py`), inside galaxy blocks and embeds only.
+The answer carries the page's new `content_hash` and no longer its render.
+
 ### `get_page` answers with `content_hash`
 
 Both surfaces now add `content_hash` to `get_page`'s data: Galaxy's page hash of the editable

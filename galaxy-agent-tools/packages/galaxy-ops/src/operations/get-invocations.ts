@@ -125,6 +125,7 @@ async function run(i: In, ctx: GalaxyContext): Promise<GetInvocationsResult> {
 
 export const getInvocationsOp: Operation<typeof input, GetInvocationsResult> = {
   name: "get_invocations", // parity: mcp-server-galaxy-py get_invocations
+  polls: { argument: "invocationId", kind: "invocation" },
   domain: "invocations",
   summary:
     "View one workflow invocation by id, or list invocations, optionally filtered by workflow or history.",

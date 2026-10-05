@@ -208,6 +208,7 @@ async function run(i: In, ctx: GalaxyContext): Promise<DatasetDetailsResult> {
 
 export const getDatasetDetailsOp: Operation<typeof input, DatasetDetailsResult> = {
   name: "get_dataset_details",
+  polls: { argument: "datasetId", kind: "dataset" },
   domain: "datasets",
   summary:
     "Show a dataset's metadata by id under `dataset` (state, extension, name), beside the "+

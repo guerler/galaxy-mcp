@@ -13,11 +13,19 @@ export function toolNames(): string[] {
 }
 
 /** MCP annotations for a single op: read-only by default, destructive only when flagged. */
-export function annotationsFor(op: { readOnly?: boolean; destructive?: boolean }): {
+export function annotationsFor(op: {
+  readOnly?: boolean;
+  destructive?: boolean;
+  destructiveWhen?: unknown;
+}): {
   readOnlyHint: boolean;
   destructiveHint: boolean;
 } {
-  return { readOnlyHint: op.readOnly !== false, destructiveHint: op.destructive === true };
+  return {
+    readOnlyHint: op.readOnly !== false,
+    // destructiveHint is "may destroy", so an op that destroys for some inputs says so.
+    destructiveHint: op.destructive === true || op.destructiveWhen !== undefined,
+  };
 }
 
 /** Per-tool MCP annotations derived from each op's readOnly/destructive hints. */

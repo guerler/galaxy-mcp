@@ -15,6 +15,17 @@ tell whether anyone changed the page in between. The hash is taken before the re
 so an HTML page is hashed by its body. Galaxy's client spells the hash over UTF-16 code units,
 which differs from this only outside the Basic Multilingual Plane.
 
+### Operations say when they destroy, what they poll, and what stays put
+
+Three fields an embedding harness can act on without a list of tool names of its own:
+`destructiveWhen(input)` for an operation that destroys for some inputs only (`update_history`
+with `deleted: true`), which also sets MCP's `destructiveHint`, a "may destroy" flag; `polls`,
+naming the argument that identifies something moving on its own (`get_dataset_details`,
+`get_job_details` by dataset, `get_invocations` by invocation), so a caller can watch it rather
+than call in a loop; and `stableForSession` for an answer that changes only when an
+administrator changes the server (the two tool searches). Library-only: the Python server's
+surface is unchanged.
+
 ## 0.3.1 (unreleased)
 
 ### `get_invocations` sends `step_details` for one invocation (#152)

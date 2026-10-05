@@ -57,6 +57,7 @@ async function run(i: In, ctx: GalaxyContext): Promise<Paged<ToolListItem>> {
 
 export const searchToolsByNameOp: Operation<typeof input, Paged<ToolListItem>> = {
   name: "search_tools_by_name",
+  stableForSession: true,
   domain: "tools",
   result: { kind: "list", paginated: true },
   summary:

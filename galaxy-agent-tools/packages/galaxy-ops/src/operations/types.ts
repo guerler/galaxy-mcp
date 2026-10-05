@@ -75,6 +75,24 @@ export interface Operation<Shape extends ZodRawShape, O> {
    * Declared only where this package owns the shape rather than Galaxy.
    */
   readonly result?: ResultShape;
+  /**
+   * Destructive for some inputs only: update_history deletes the history when `deleted` is
+   * true and renames it otherwise. A caller that asks before destroying asks for exactly these
+   * calls. MCP's destructiveHint says a tool *may* destroy, so it is set whenever this is.
+   */
+  readonly destructiveWhen?: (input: InputOf<Shape>) => boolean;
+  /**
+   * The op reads the state of something that moves on its own -- a dataset being written, a
+   * job running, an invocation scheduling -- and `argument` is the input that names it. Reading
+   * it again a moment later says nothing new, so a caller may watch it rather than call in a
+   * loop. `kind` is what the argument names.
+   */
+  readonly polls?: { argument: keyof Shape & string; kind: "dataset" | "invocation" };
+  /**
+   * The same arguments answer the same for the rest of a session: what the op reads changes
+   * only when an administrator changes the server. A caller may answer a repeat from what it has.
+   */
+  readonly stableForSession?: boolean;
   run(input: InputOf<Shape>, ctx: GalaxyContext): Promise<O>;
   /**
    * How to cut this op's page down, for the ops the Python server budgets.

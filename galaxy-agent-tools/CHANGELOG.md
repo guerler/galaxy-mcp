@@ -4,6 +4,17 @@
 `@galaxyproject/galaxy-mcp` share a version and are published together, so one
 entry covers all three; where something only affects one surface, it says which.
 
+## Unreleased
+
+### `get_page` answers with `content_hash`
+
+Both surfaces now add `content_hash` to `get_page`'s data: Galaxy's page hash of the editable
+source (`content_editor`, or `content` for an HTML page), the same djb2 over code points that
+`lib/galaxy/agents/page_assistant.py` computes. A caller that reads a page again compares it to
+tell whether anyone changed the page in between. The hash is taken before the render is dropped,
+so an HTML page is hashed by its body. Galaxy's client spells the hash over UTF-16 code units,
+which differs from this only outside the Basic Multilingual Plane.
+
 ## 0.3.1 (unreleased)
 
 ### `get_invocations` sends `step_details` for one invocation (#152)

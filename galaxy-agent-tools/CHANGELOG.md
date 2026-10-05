@@ -6,6 +6,17 @@ entry covers all three; where something only affects one surface, it says which.
 
 ## Unreleased
 
+### `get_history_contents` lets Galaxy page the history
+
+Both surfaces ask the contents index for one window -- filtered, sorted and cut by Galaxy --
+with the stats media type, so the total is the count Galaxy matched rather than one taken over
+the whole history fetched here. `order` takes the six values it documents and refuses any
+other before a request; the prefix reading that took "hid" as ascending is gone. A page over
+the 50 KB output budget is cut like the other listings' and continues from the first item it
+did not return. Rows leave out `dataset_id`: it names the Dataset under each item, which no
+tool takes, and passed where `id` belongs it resolves to an unrelated item. A failure now
+quotes the contents URL with its query, the request having gone out through requests.
+
 ### `update_page` replaces one section, and refuses a write against a stale hash
 
 Both surfaces take `section_heading` with `section_content` to replace one section by its

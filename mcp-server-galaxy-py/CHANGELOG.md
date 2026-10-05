@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `get_history_contents` asks Galaxy for one filtered, sorted window with its matching count
+  (the contents index's stats media type) instead of fetching the whole history and paging it
+  here. `order` is one of the six documented values; anything else is refused. A page over the
+  output budget is cut and continues from the first item it did not return. Rows no longer
+  carry `dataset_id`. The TypeScript surface answers the same.
 - `get_job_details` reads the job with `full=true`, so a failed job's logs come back; each log
   longer than 4 KB keeps its first and last 2 KB on line boundaries, with a line saying how much
   was left out. The TypeScript surface answers the same.

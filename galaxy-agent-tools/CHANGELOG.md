@@ -36,6 +36,17 @@ many bytes were left out: the cause of a failure is usually at the end, its cont
 and a long log read from one end hid the one line that explained it. A failure's text now quotes
 the URL with `?full=true`.
 
+### `get_invocations` says what a run amounted to, not only how it was scheduled
+
+Galaxy's invocation `state` describes scheduling: 26.x reports `completed` for a run whose jobs
+failed. Both surfaces now read `GET /api/invocations/{id}/jobs_summary` for one invocation, and
+for the first 20 of a listing, and add `job_states` and `outcome` -- `failing` while a job has
+failed and others still move, `failed`, `cancelled`, `completed`, or Galaxy's own state -- with
+an `outcome_note` where there is something to do about it. Job states that settle are read off
+`JobState`: the model's terminal states plus `failed`, `skipped` (a conditional step that did not
+run) and `stopped`; any other state keeps the run open. A summary that cannot be read counts as
+no jobs. `invocationOutcome` and `withOutcome` are exported for a caller watching invocations.
+
 ### Operations say when they destroy, what they poll, and what stays put
 
 Three fields an embedding harness can act on without a list of tool names of its own:

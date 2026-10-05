@@ -72,7 +72,7 @@ class TestGetInvocationsRefusesAnErrorBody:
             url="URL/inv1", params={"step_details": "true"}
         )
         mock_galaxy_instance.invocations.show_invocation.assert_not_called()
-        assert result.data == {"id": "inv1", "steps": []}
+        assert result.data == {"id": "inv1", "steps": [], "job_states": {}, "outcome": None}
 
     def test_one_invocation_without_step_details_is_the_plain_show(self, mock_galaxy_instance):
         mock_galaxy_instance.invocations.show_invocation.return_value = {"id": "inv1"}
@@ -102,7 +102,8 @@ class TestGetInvocationsRefusesAnErrorBody:
 
         assert result.success is True
         assert result.count == 2
-        assert result.data == invocations
+        # Each comes back with what its jobs amount to; nothing else about it changes.
+        assert result.data == [{**i, "job_states": {}, "outcome": i["state"]} for i in invocations]
 
     def test_a_dict_that_is_not_an_error_is_untouched(self, mock_galaxy_instance):
         """Only the err_msg shape is refused, not every dict."""
@@ -918,3 +919,65 @@ class TestCoerceOptionalJsonDict:
     def test_invalid_json_raises_named_error(self):
         with pytest.raises(ValueError, match="inputs must be a JSON object"):
             _coerce_optional_json_dict("{not valid json", "inputs")
+
+
+class TestInvocationOutcome:
+    """get_invocations reads an invocation's jobs, because Galaxy's state is scheduling only."""
+
+    def _show(self, mock_galaxy_instance, state, job_states):
+        mock_galaxy_instance.invocations.show_invocation.return_value = {"id": "i1", "state": state}
+        mock_galaxy_instance.invocations.get_invocation_summary.return_value = {
+            "states": job_states
+        }
+        with patch.dict(galaxy_state, {"connected": True, "gi": mock_galaxy_instance}):
+            return get_invocations_fn(invocation_id="i1").data
+
+    def test_a_completed_run_whose_job_failed_is_failed(self, mock_galaxy_instance):
+        data = self._show(mock_galaxy_instance, "completed", {"ok": 3, "error": 1})
+        assert data["outcome"] == "failed"
+        assert data["job_states"] == {"ok": 3, "error": 1}
+        assert "get_job_details" in data["outcome_note"]
+
+    def test_a_failure_while_jobs_still_run_is_failing(self, mock_galaxy_instance):
+        assert (
+            self._show(mock_galaxy_instance, "scheduled", {"error": 1, "running": 2})["outcome"]
+            == "failing"
+        )
+
+    def test_a_skipped_conditional_step_does_not_keep_a_run_open(self, mock_galaxy_instance):
+        assert (
+            self._show(mock_galaxy_instance, "scheduled", {"ok": 2, "skipped": 1})["outcome"]
+            == "completed"
+        )
+
+    def test_a_paused_job_keeps_a_run_open(self, mock_galaxy_instance):
+        assert (
+            self._show(mock_galaxy_instance, "scheduled", {"ok": 2, "paused": 1})["outcome"]
+            == "scheduled"
+        )
+
+    def test_a_cancelled_run_says_so(self, mock_galaxy_instance):
+        data = self._show(mock_galaxy_instance, "cancelled", {"ok": 1})
+        assert data["outcome"] == "cancelled"
+        assert "incomplete" in data["outcome_note"]
+
+    def test_an_unreadable_summary_is_no_jobs(self, mock_galaxy_instance):
+        mock_galaxy_instance.invocations.show_invocation.return_value = {
+            "id": "i1",
+            "state": "scheduled",
+        }
+        mock_galaxy_instance.invocations.get_invocation_summary.side_effect = RuntimeError("500")
+        with patch.dict(galaxy_state, {"connected": True, "gi": mock_galaxy_instance}):
+            data = get_invocations_fn(invocation_id="i1").data
+        assert data["job_states"] == {}
+        assert data["outcome"] == "scheduled"
+
+    def test_a_listing_reads_the_jobs_of_its_first_twenty(self, mock_galaxy_instance):
+        listed = [{"id": f"i{n}", "state": "scheduled"} for n in range(25)]
+        mock_galaxy_instance.invocations.get_invocations.return_value = listed
+        mock_galaxy_instance.invocations.get_invocation_summary.return_value = {"states": {"ok": 1}}
+        with patch.dict(galaxy_state, {"connected": True, "gi": mock_galaxy_instance}):
+            data = get_invocations_fn().data
+        assert [d.get("outcome") for d in data[:20]] == ["completed"] * 20
+        assert all("outcome" not in d for d in data[20:])
+        assert mock_galaxy_instance.invocations.get_invocation_summary.call_count == 20

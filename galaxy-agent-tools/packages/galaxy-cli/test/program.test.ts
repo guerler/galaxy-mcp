@@ -119,7 +119,11 @@ describe("buildProgram", () => {
     // parity change made it optional, which moves it to --invocation-id.
     const asked: string[] = [];
     const run = await runCli(["get_invocations", "--invocation-id", "inv1", "--format", "json"], invocationsContext(asked));
-    expect(asked).toEqual([expect.stringContaining("/api/invocations/inv1")]);
+    // The invocation, then its jobs for the outcome.
+    expect(asked).toEqual([
+      expect.stringContaining("/api/invocations/inv1"),
+      expect.stringContaining("/api/invocations/inv1/jobs_summary"),
+    ]);
     expect(run.stdout).toContain('"success": true');
     expect(run.exitCode).toBe(0);
   });
@@ -127,7 +131,9 @@ describe("buildProgram", () => {
   it("lists invocations when get_invocations is given no id", async () => {
     const asked: string[] = [];
     const run = await runCli(["get_invocations", "--format", "json"], invocationsContext(asked));
-    expect(asked).toEqual([expect.stringContaining("/api/invocations?")]);
+    // The listing first; the jobs each listed invocation is rolled up from follow it.
+    expect(asked[0]).toContain("/api/invocations?");
+    expect(asked.slice(1).every((url) => url.endsWith("/jobs_summary"))).toBe(true);
     expect(asked[0]).not.toContain("workflow_id=");
     expect(run.stdout).toContain('"success": true');
     expect(run.exitCode).toBe(0);

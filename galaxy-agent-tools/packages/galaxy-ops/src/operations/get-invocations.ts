@@ -4,6 +4,7 @@ import type { GalaxyContext } from "../context";
 import { httpError, GalaxyConnectionError } from "../errors";
 import { pyFormatError } from "../python-failure";
 import { pyStr } from "../python-values";
+import { ROLLUP_LIMIT, withOutcome, type JobStates } from "../invocation-outcome";
 import { register, runOperation } from "./registry";
 import type { AnyOperation, InputOf, Operation } from "./types";
 
@@ -56,6 +57,26 @@ type In = {
 /** One invocation when an id was given, the filtered listing when it was not. */
 export type GetInvocationsResult = InvocationDetail | InvocationSummary[];
 
+/**
+ * How many of an invocation's jobs are in each state. A summary that cannot be read is no jobs,
+ * as the other server reads it: the invocation is still worth answering with.
+ */
+async function jobStates(ctx: GalaxyContext, invocationId: string): Promise<JobStates> {
+  let states: unknown;
+  try {
+    const { data } = await ctx.client.GET("/api/invocations/{invocation_id}/jobs_summary", {
+      params: { path: { invocation_id: invocationId } },
+    });
+    states = (data as { states?: unknown } | undefined)?.states;
+  } catch {
+    return {};
+  }
+  if (!states || typeof states !== "object" || Array.isArray(states)) return {};
+  return Object.fromEntries(
+    Object.entries(states).filter(([, n]) => typeof n === "number" && Number.isInteger(n)),
+  ) as JobStates;
+}
+
 async function run(i: In, ctx: GalaxyContext): Promise<GetInvocationsResult> {
   if (i.invocationId) {
     // Galaxy answers a single invocation with every step's jobs list empty unless
@@ -68,7 +89,7 @@ async function run(i: In, ctx: GalaxyContext): Promise<GetInvocationsResult> {
       },
     });
     if (error || !data) throw httpError(response, error);
-    return data as InvocationDetail;
+    return withOutcome(data as InvocationDetail, await jobStates(ctx, i.invocationId));
   }
 
   const { data, error, response } = await ctx.client.GET("/api/invocations", {
@@ -119,8 +140,16 @@ async function run(i: In, ctx: GalaxyContext): Promise<GetInvocationsResult> {
 
   // Whatever the index sends back for the window it was asked for. Trimming the page here
   // would be a bound Python does not apply, and an agent comparing the two surfaces would
-  // have no way to see where the missing rows went.
-  return data as InvocationSummary[];
+  // have no way to see where the missing rows went. The first ROLLUP_LIMIT carry their jobs'
+  // outcome, one request each and in order, as the other server reads them.
+  const rolled: InvocationSummary[] = [];
+  for (const [index, invocation] of (data as InvocationSummary[]).entries()) {
+    const id = (invocation as { id?: unknown }).id;
+    rolled.push(
+      typeof id === "string" && index < ROLLUP_LIMIT ? withOutcome(invocation, await jobStates(ctx, id)) : invocation,
+    );
+  }
+  return rolled;
 }
 
 export const getInvocationsOp: Operation<typeof input, GetInvocationsResult> = {
@@ -128,7 +157,10 @@ export const getInvocationsOp: Operation<typeof input, GetInvocationsResult> = {
   polls: { argument: "invocationId", kind: "invocation" },
   domain: "invocations",
   summary:
-    "View one workflow invocation by id, or list invocations, optionally filtered by workflow or history.",
+    "View one workflow invocation by id, or list invocations, optionally filtered by workflow or " +
+    "history. Each invocation (the first 20 of a listing) carries `job_states`, how many of its " +
+    "jobs are in each state, and `outcome`: Galaxy's `state` describes scheduling only, so read " +
+    "`outcome` -- failing, failed, cancelled or completed -- for what the run amounted to.",
   input,
   run,
   project: (result, i) => {

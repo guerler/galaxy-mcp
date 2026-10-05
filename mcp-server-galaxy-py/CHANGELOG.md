@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer than 4 KB keeps its first and last 2 KB on line boundaries, with a line saying how much
   was left out. The TypeScript surface answers the same.
 
+### Changed
+
+- `get_invocations` reads each invocation's jobs summary (the first 20 of a listing) and adds
+  `job_states` and `outcome` -- failing, failed, cancelled or completed -- because Galaxy's
+  `state` describes scheduling only and says completed for a run whose jobs failed. The
+  TypeScript surface answers the same.
+
 ### Fixed
 
 - The three raw requests over the unprivileged-tools API now check the status Galaxy answered

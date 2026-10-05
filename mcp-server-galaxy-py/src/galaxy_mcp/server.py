@@ -3276,6 +3276,71 @@ def upload_file_from_url(
         ) from e
 
 
+# Job states that will not change again, read off JobState (lib/galaxy/schema/states.py): the
+# model's terminal_states plus failed, skipped (a conditional step that did not run) and
+# stopped. Every other state counts as still moving.
+_JOB_SETTLED_STATES = frozenset({"ok", "skipped", "stopped", "error", "failed", "deleted"})
+_JOB_FAILED_STATES = frozenset({"error", "failed", "deleted"})
+_SCHEDULING_DONE = frozenset({"scheduled", "cancelled", "failed", "completed"})
+# Invocations a listing reads the jobs of, one request each.
+_ROLLUP_LIMIT = 20
+_OUTCOME_NOTES = {
+    "failed": (
+        "A job in this invocation failed. Galaxy's `state` describes scheduling only. "
+        "Report the failure rather than the state, and read the failing dataset's "
+        "get_job_details before proposing a repair."
+    ),
+    "failing": (
+        "A job in this invocation failed while others are still running. The run is not "
+        "over, so do not report it as finished, and do not repair it until it settles."
+    ),
+    "cancelled": "This invocation was cancelled, so its outputs are incomplete.",
+}
+
+
+def _invocation_outcome(state: str | None, job_states: dict[str, int]) -> str | None:
+    """What an invocation amounts to once its jobs are counted.
+
+    Galaxy's `state` describes scheduling: 26.x says `completed` for a run whose jobs
+    failed. `failing` while a job failed and others still move, `failed` once all settled
+    with a failure, `cancelled` for a stop someone asked for, `completed` when jobs came
+    back ok, and Galaxy's own state otherwise.
+    """
+    failed = sum(n for s, n in job_states.items() if n and s in _JOB_FAILED_STATES)
+    active = sum(n for s, n in job_states.items() if n and s not in _JOB_SETTLED_STATES)
+    if (state or "") not in _SCHEDULING_DONE or active:
+        return "failing" if failed else state
+    if state == "cancelled":
+        return "cancelled"
+    if failed or state == "failed":
+        return "failed"
+    return "completed" if job_states.get("ok") else state
+
+
+def _job_states(gi: GalaxyInstance, invocation_id: str) -> dict[str, int]:
+    """How many of an invocation's jobs are in each state; a summary that cannot be read is
+    no jobs, and the invocation is still worth answering with."""
+    try:
+        summary = gi.invocations.get_invocation_summary(invocation_id)
+    except Exception:
+        return {}
+    states = summary.get("states") if isinstance(summary, dict) else None
+    if not isinstance(states, dict):
+        return {}
+    return {s: n for s, n in states.items() if isinstance(s, str) and isinstance(n, int)}
+
+
+def _with_outcome(invocation: Any, job_states: dict[str, int]) -> Any:
+    """The invocation with its jobs' states, the outcome they give it, and a note if one helps."""
+    if not isinstance(invocation, dict):
+        return invocation
+    outcome = _invocation_outcome(invocation.get("state"), job_states)
+    out = {**invocation, "job_states": job_states, "outcome": outcome}
+    if outcome in _OUTCOME_NOTES:
+        out["outcome_note"] = _OUTCOME_NOTES[outcome]
+    return out
+
+
 @mcp.tool(tags={"workflows", "read", "extended"})
 def get_invocations(
     invocation_id: str | None = None,
@@ -3304,6 +3369,11 @@ def get_invocations(
                      jobs. Applies to one invocation by id, and to a listing when
                      view is 'element' (default: False)
 
+    Each invocation (the first 20 of a listing) carries `job_states`, how many of
+    its jobs are in each state, and `outcome`. Galaxy's `state` describes scheduling
+    only -- it says completed for a run whose jobs failed -- so read `outcome`
+    (failing, failed, cancelled or completed) for what the run amounted to.
+
     Returns:
         GalaxyResult with workflow invocation information in data field
     """
@@ -3325,7 +3395,7 @@ def get_invocations(
                 invocation = gi.invocations.show_invocation(invocation_id)
             _refuse_error_body("Get workflow invocations", invocation)
             return GalaxyResult(
-                data=invocation,
+                data=_with_outcome(invocation, _job_states(gi, invocation_id)),
                 success=True,
                 message=f"Retrieved invocation '{invocation_id}'",
             )
@@ -3339,8 +3409,16 @@ def get_invocations(
             step_details=step_details,
         )
         _refuse_error_body("Get workflow invocations", invocations)
+        rolled = [
+            _with_outcome(invocation, _job_states(gi, invocation["id"]))
+            if index < _ROLLUP_LIMIT
+            and isinstance(invocation, dict)
+            and isinstance(invocation.get("id"), str)
+            else invocation
+            for index, invocation in enumerate(invocations)
+        ]
         return GalaxyResult(
-            data=invocations,
+            data=rolled,
             success=True,
             message=f"Retrieved {len(invocations)} workflow invocations",
             count=len(invocations),

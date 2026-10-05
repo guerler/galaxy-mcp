@@ -16,7 +16,9 @@
           }
         ]
       }
-    ]
+    ],
+    "job_states": {},
+    "outcome": "scheduled"
   },
   "success": true,
   "message": "Retrieved invocation 'inv0000'",

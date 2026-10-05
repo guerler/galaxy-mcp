@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `get_job_details` reads the job with `full=true`, so a failed job's logs come back; each log
+  longer than 4 KB keeps its first and last 2 KB on line boundaries, with a line saying how much
+  was left out. The TypeScript surface answers the same.
+
 ### Fixed
 
 - The three raw requests over the unprivileged-tools API now check the status Galaxy answered

@@ -6,6 +6,15 @@ entry covers all three; where something only affects one surface, it says which.
 
 ## 0.3.1 (unreleased)
 
+### One list of settled job states, and a wait that settles on all of them
+
+`terminal-states.ts` holds the job states that will not change again (`ok`, `skipped`, `stopped`,
+`error`, `failed`, `deleted`, read off Galaxy's `JobState`) and the ones among them that are a
+failure (`error`, `failed`, `deleted`). `waitForJob` settles on that list, so a skipped or stopped
+job ends the wait with `JobFailedError` naming the state instead of polling until the timeout.
+The job, dataset and invocation state lists are exported from the browser entry, so a client
+that watches jobs, datasets or invocations settles on the same states the operations wait on.
+
 ### `update_history` is marked destructive
 
 It deletes the history when `deleted` is true, so its MCP `destructiveHint`, a "may destroy"

@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `get_history_contents` asks Galaxy for one filtered, sorted window with its matching count
+  (the contents index's stats media type) instead of fetching the whole history and paging it
+  here; rows are the index's summary view. `order` is a sort key Galaxy takes for one history
+  (`hid`, `create_time`, `update_time`, `name`, `extension`, `size`) with `-asc` or `-dsc`;
+  anything else is refused. A page over the output budget is cut and continues from the first
+  item it did not return. Rows no longer carry `dataset_id`. The TypeScript surface answers the
+  same.
 - `get_invocations` given an invocation id also reads its jobs summary (one more request) and
   adds `job_states` and `outcome` -- failing, failed, cancelled, completed, or Galaxy's own
   state -- because Galaxy's `state` describes scheduling only and says completed for a run whose

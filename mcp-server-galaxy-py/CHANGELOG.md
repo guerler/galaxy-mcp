@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `get_invocations` given an invocation id also reads its jobs summary (one more request) and
+  adds `job_states` and `outcome` -- failing, failed, cancelled, completed, or Galaxy's own
+  state -- because Galaxy's `state` describes scheduling only and says completed for a run whose
+  jobs failed. A failure with only paused jobs behind it is failed, since Galaxy pauses the jobs
+  downstream of a failed one; a summary that cannot be read adds neither field. A listing is
+  unchanged. The TypeScript surface answers the same.
 - `get_job_details` reads the job with `full=true`, so a failed job's logs come back; each log
   longer than 4 KB keeps its first and last 2 KB on line boundaries, with a line saying how much
   was left out. The TypeScript surface answers the same.

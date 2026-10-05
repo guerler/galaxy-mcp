@@ -27,6 +27,15 @@ tell whether anyone changed the page in between. The hash is taken before the re
 so an HTML page is hashed by its body. Galaxy's client spells the hash over UTF-16 code units,
 which differs from this only outside the Basic Multilingual Plane.
 
+### `get_job_details` reads the job in full and keeps both ends of its logs
+
+Both surfaces ask `GET /api/jobs/{id}?full=true`, the only view that carries a failed job's
+logs (`tool_stdout`, `tool_stderr`, `job_stdout`, `job_stderr`, `stdout`, `stderr`). A log
+longer than 4 KB keeps its first and last 2 KB, cut back to whole lines, with a line saying how
+many bytes were left out: the cause of a failure is usually at the end, its context at the start,
+and a long log read from one end hid the one line that explained it. A failure's text now quotes
+the URL with `?full=true`.
+
 ### Operations say when they destroy, what they poll, and what stays put
 
 Three fields an embedding harness can act on without a list of tool names of its own:

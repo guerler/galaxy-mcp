@@ -6,6 +6,21 @@ entry covers all three; where something only affects one surface, it says which.
 
 ## 0.3.1 (unreleased)
 
+### `update_page` replaces one section, and refuses a write against a stale hash
+
+Both surfaces take `section_heading` with `section_content` to replace one section by its
+heading line, appending it when the page has no such heading -- `applySectionEdit` from Galaxy's
+own page editor (`client/src/components/PageEditor/sectionDiffUtils.ts`), which replaces every
+section with that heading line. A section edit needs a markdown page; one authored as HTML is
+refused after the read. `expect_hash`, the
+`content_hash` `get_page` returned, makes the write fail when the page changed since: the
+failure names the hash it has now and says to read it again. Galaxy's PUT has no precondition,
+so the read and the write are two requests. Content whose directives name an object by something
+that is not an encoded id (a hid, a name) is refused before anything is sent, for the arguments
+Galaxy decodes (`lib/galaxy/managers/markdown_util.py`), inside galaxy blocks and embeds only;
+`malformedObjectIds` is exported, so a client can check content the same way before writing it.
+The answer carries the page's new `content_hash`.
+
 ### One list of settled job states, and a wait that settles on all of them
 
 `terminal-states.ts` holds the job states that will not change again (`ok`, `skipped`, `stopped`,

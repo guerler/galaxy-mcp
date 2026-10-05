@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `update_page` takes `section_heading`/`section_content` to replace a section of a markdown page,
+  with Galaxy's own section rules (every section with that heading line is replaced), and
+  `expect_hash` to refuse a write when the page changed since it was read.
+  Directive ids that are not encoded ids are refused before anything is sent. The answer carries
+  the new `content_hash`. The TypeScript surface answers the same.
 - `get_page` returns `content_hash`, Galaxy's page hash of the editable source (djb2 over code
   points, as `lib/galaxy/agents/page_assistant.py` computes it), so a caller can tell on a later
   read whether the page changed. The TypeScript surface answers the same.

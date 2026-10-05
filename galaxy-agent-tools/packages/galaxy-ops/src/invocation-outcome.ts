@@ -9,15 +9,10 @@
 /** How many of an invocation's jobs are in each state, as jobs_summary counts them. */
 export type JobStates = Record<string, number>;
 
-/**
- * Job states that will not change again, read off `JobState` (lib/galaxy/schema/states.py):
- * the model's terminal_states (ok, error, deleted) plus failed, skipped -- a conditional step
- * that did not run -- and stopped. Every other state counts as still moving, so a state Galaxy
- * adds later keeps an invocation open rather than calling it finished.
- */
-export const JOB_SETTLED_STATES = ["ok", "skipped", "stopped", "error", "failed", "deleted"] as const;
-/** The settled job states that are a failure, as Galaxy's own invocation view counts errors. */
-export const JOB_FAILED_STATES = ["error", "failed", "deleted"] as const;
+import { JOB_FAILED_STATES, JOB_SETTLED_STATES } from "./terminal-states";
+
+export { JOB_FAILED_STATES, JOB_SETTLED_STATES };
+
 /** Invocation states after which nothing more is scheduled. */
 const SCHEDULING_DONE = new Set(["scheduled", "cancelled", "failed", "completed"]);
 

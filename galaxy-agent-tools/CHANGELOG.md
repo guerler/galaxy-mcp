@@ -24,6 +24,21 @@ many bytes were left out: the cause of a failure is usually at the end, its cont
 and a long log read from one end hid the one line that explained it. A failure's text now quotes
 the URL with `?full=true`.
 
+### `get_invocations` says what a run amounted to, not only how it was scheduled
+
+Galaxy's invocation `state` describes scheduling: 26.x reports `completed` for a run whose jobs
+failed. Given an invocation id, both surfaces now also read `GET /api/invocations/{id}/jobs_summary`
+(one more request) and add `job_states` and `outcome` -- `failing` while a job has
+failed and others still move, `failed`, `cancelled`, `completed`, or Galaxy's own state. Job
+states that settle are read off `JobState`: the model's terminal states plus `failed`, `skipped`
+(a conditional step that did not run) and `stopped`. A paused job waits for someone to resume
+it: Galaxy pauses the jobs downstream of a failed one, so a failure with only paused jobs behind
+it is `failed`, and paused jobs without a failure leave Galaxy's state. Any other state keeps the
+run open. A summary that cannot be read adds neither field, rather than an outcome read off no
+jobs. A listing stays Galaxy's rows with their scheduling `state`, without a request per row, as
+Galaxy's own client lists them. `invocationOutcome` is exported, so a client that reads the jobs
+summary itself reaches the outcome `get_invocations` reports.
+
 ### `update_history` is marked destructive
 
 It deletes the history when `deleted` is true, so its MCP `destructiveHint`, a "may destroy"

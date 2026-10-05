@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `get_page` returns `content_hash`, Galaxy's page hash of the editable source (djb2 over code
+  points, as `lib/galaxy/agents/page_assistant.py` computes it), so a caller can tell on a later
+  read whether the page changed. The TypeScript surface answers the same.
+
 ### Changed
 
 - `get_invocations` given an invocation id also reads its jobs summary (one more request) and

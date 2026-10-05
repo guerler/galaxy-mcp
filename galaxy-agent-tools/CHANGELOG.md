@@ -15,6 +15,15 @@ job ends the wait with `JobFailedError` naming the state instead of polling unti
 The job, dataset and invocation state lists are exported from the browser entry, so a client
 that watches jobs, datasets or invocations settles on the same states the operations wait on.
 
+### `get_job_details` reads the job in full and keeps both ends of its logs
+
+Both surfaces ask `GET /api/jobs/{id}?full=true`, the only view that carries a failed job's
+logs (`tool_stdout`, `tool_stderr`, `job_stdout`, `job_stderr`, `stdout`, `stderr`). A log
+longer than 4 KB keeps its first and last 2 KB, cut back to whole lines, with a line saying how
+many bytes were left out: the cause of a failure is usually at the end, its context at the start,
+and a long log read from one end hid the one line that explained it. A failure's text now quotes
+the URL with `?full=true`.
+
 ### `update_history` is marked destructive
 
 It deletes the history when `deleted` is true, so its MCP `destructiveHint`, a "may destroy"

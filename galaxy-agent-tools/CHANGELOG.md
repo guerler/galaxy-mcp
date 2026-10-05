@@ -6,6 +6,11 @@ entry covers all three; where something only affects one surface, it says which.
 
 ## 0.3.1 (unreleased)
 
+### `update_history` is marked destructive
+
+It deletes the history when `deleted` is true, so its MCP `destructiveHint`, a "may destroy"
+flag, is now set.
+
 ### `get_invocations` sends `step_details` for one invocation (#152)
 
 Given an `invocationId`, the op ignored `stepDetails` and Galaxy answered with every step's

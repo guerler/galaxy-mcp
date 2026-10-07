@@ -30,6 +30,15 @@ or an accepted argument changed, so a caller can adjust.
 - `waitForJob` (library only) ends on a skipped or stopped job with `JobFailedError` naming the
   state, instead of polling until the timeout.
 
+### `GALAXY_MCP_SURFACE`: what galaxy-mcp's Python server advertises
+
+`@galaxyproject/galaxy-ops` exports, for each tool the Python server registers, the description
+an MCP client receives and each parameter's description, generated from that server's surface
+manifest and compared with it in the test suite. A client offering these tools under galaxy-mcp's
+names can tell its model what that server tells one. The advertised description is the
+docstring's opening text with any Galaxy requirement in it: FastMCP keeps a docstring's `Args:` as
+parameter descriptions and does not send what follows them (`Returns:`, examples, `NEXT STEPS`).
+
 ### `get_history_contents` lets Galaxy page the history
 
 Both surfaces ask the contents index for one window -- filtered, sorted and cut by Galaxy --

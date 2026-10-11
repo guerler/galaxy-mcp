@@ -30,6 +30,26 @@ describe("search_tools_by_name", () => {
     expect(out[0].id).toBe("fastqc_tool");
   });
 
+  it("adds the tools holding every word of the query, after the substring matches", async () => {
+    const tools = [
+      { id: "Count1", name: "Count", description: "occurrences of each record" },
+      { id: "htseq_count", name: "htseq-count", description: "Count aligned reads" },
+      { id: "pdf_parse", name: "Parse PDF", description: "Read PDF text" },
+      { id: "paper_fetch", name: "Download publication data", description: "Fetch PDFs" },
+    ];
+    const client = mockClient({ GET: () => ({ data: tools, response: { status: 200 } }) });
+    const ids = async (query: string) =>
+      (await searchToolsByName({ query }, ctxWith(client))).items.map((t) => t.id);
+    expect(await ids("Count occurrences")).toEqual(["Count1"]);
+    expect(await ids("pdf download")).toEqual(["paper_fetch"]);
+    expect(await ids("pdf")).toEqual(["pdf_parse", "paper_fetch"]);
+    expect(await ids("count reads")).toEqual(["htseq_count"]);
+    expect(await ids("pdf viewer")).toEqual([]);
+    // A single character is in nearly every tool, so a query with one finds no more.
+    expect(await ids("c o u n t")).toEqual([]);
+    expect(await ids("R count")).toEqual([]);
+  });
+
   it("matches against id when name/description do not match", async () => {
     const client = mockClient({
       GET: () => ({ data: TOOLS, response: { status: 200 } }),

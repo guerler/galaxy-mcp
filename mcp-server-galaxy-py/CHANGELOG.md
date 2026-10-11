@@ -41,6 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `get_job_details` reads the job with `full=true`, so a failed job's logs come back; a log over
   4 KB keeps its first and last 2 KB.
 
+### Fixed
+
+- `search_tools_by_name` also returns, after its substring matches, the tools whose name, ID and
+  description hold every word of the query between them. A phrase that is no substring of any
+  one of them, such as `count occurrences` for Count ("occurrences of each record") or
+  `pdf download`, found nothing. A query with a single-character word finds no more.
+
 ## [1.11.0] - 2026-10-05
 
 ### Security

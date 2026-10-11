@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { GalaxyContext } from "../context";
 import { legacyGet } from "../legacy";
-import { pyContains, pyLower } from "../python-str";
+import { pyContains, pyLower, pySplitWhitespace } from "../python-str";
 import { paginate, shrinkPaged, validatePagination, wirePagination, type Paged } from "./pagination";
 import { register, runOperation } from "./registry";
 import type { AnyOperation, Operation } from "./types";
@@ -52,7 +52,25 @@ async function run(i: In, ctx: GalaxyContext): Promise<Paged<ToolListItem>> {
       pyContains(pyLower(t.id ?? ""), needle) ||
       pyContains(pyLower(t.description ?? ""), needle),
   );
+  matches.push(...wordMatches(needle, Array.isArray(tools) ? tools : [], matches));
   return paginate(matches, { limit, offset, noun: "tools" });
+}
+
+/**
+ * The tools whose name, id and description hold every word of the query between them, beyond
+ * those already found. A phrase need not be a substring of any one of them: "count occurrences"
+ * finds Count, described as "occurrences of each record". A single character is in nearly every
+ * tool and still says what the query meant ("tool 1"), so a query with one finds no more.
+ */
+function wordMatches(needle: string, tools: ToolListItem[], found: ToolListItem[]): ToolListItem[] {
+  const words = pySplitWhitespace(needle);
+  if (!words.length || words.some((word) => [...word].length < 2)) return [];
+  const seen = new Set(found.map((t) => t.id));
+  return tools.filter((t) => {
+    if (seen.has(t.id)) return false;
+    const fields = [t.name, t.id, t.description].map((field) => pyLower(field ?? ""));
+    return words.every((word) => fields.some((field) => pyContains(field, word)));
+  });
 }
 
 export const searchToolsByNameOp: Operation<typeof input, Paged<ToolListItem>> = {
@@ -60,7 +78,7 @@ export const searchToolsByNameOp: Operation<typeof input, Paged<ToolListItem>> =
   domain: "tools",
   result: { kind: "list", paginated: true },
   summary:
-    "Search Galaxy tools by name, id, or description substring (case-insensitive), a page at a time.",
+    "Search Galaxy tools by name, id, or description substring (case-insensitive), then by every word of the query, a page at a time.",
   input,
   run,
   budget: {

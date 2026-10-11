@@ -41,6 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `get_job_details` reads the job with `full=true`, so a failed job's logs come back; a log over
   4 KB keeps its first and last 2 KB.
 
+### Fixed
+
+- `search_tools_by_name` also returns, after its substring matches, the tools Galaxy's own tool
+  search ranks for the query. A phrase that is no substring of any tool name, such as
+  `pdf download`, found nothing; Galaxy's search matches each word and reads help text. When it
+  is unavailable the substring matches stand.
+
 ## [1.11.0] - 2026-10-05
 
 ### Security

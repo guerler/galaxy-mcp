@@ -52,6 +52,13 @@ name, unless it says otherwise.
 - `update_history` sets MCP's `destructiveHint`, since it deletes the history when `deleted` is
   true.
 
+### Fixed
+
+- `search_tools_by_name` also returns, after its substring matches, the tools Galaxy's own tool
+  search ranks for the query. A phrase that is no substring of any tool name, such as
+  `pdf download`, found nothing; Galaxy's search matches each word and reads help text. When it
+  is unavailable the substring matches stand.
+
 ### `get_invocations` sends `step_details` for one invocation (#152)
 
 Given an `invocationId`, the op ignored `stepDetails` and Galaxy answered with every step's

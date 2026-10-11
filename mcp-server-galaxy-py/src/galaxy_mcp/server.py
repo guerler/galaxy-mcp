@@ -1466,10 +1466,37 @@ def connect(url: str | None = None, api_key: str | None = None) -> GalaxyResult:
         raise ValueError(error_msg) from e
 
 
+def _searched_tools(
+    gi: GalaxyInstance, query: str, all_tools: list[dict[str, Any]], found: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """The tools Galaxy's search index ranks for the query, beyond those already found.
+
+    The index matches each word and reads help text, so a phrase that is no substring of
+    any name still finds its tools. It is best-effort: without it the substring matches stand.
+    """
+    try:
+        response = gi.make_get_request(f"{gi.url}/tools", params={"q": query})
+        response.raise_for_status()
+        ranked = response.json()
+    except Exception:
+        return []
+    if not isinstance(ranked, list):
+        return []
+    by_id = {tool.get("id"): tool for tool in all_tools}
+    seen = {tool.get("id") for tool in found}
+    searched = []
+    for tool_id in ranked:
+        if isinstance(tool_id, str) and tool_id in by_id and tool_id not in seen:
+            seen.add(tool_id)
+            searched.append(by_id[tool_id])
+    return searched
+
+
 @mcp.tool(tags={"tools", "read", "extended"})
 def search_tools_by_name(query: str, limit: int = 25, offset: int = 0) -> GalaxyResult:
     """
-    Search Galaxy tools whose name, ID, or description contains the given query (substring match).
+    Search Galaxy tools whose name, ID, or description contains the given query (substring match),
+    followed by the further tools Galaxy's own tool search finds for it.
 
     Results are paginated. pagination.total_items is how many tools matched in total;
     pagination.next_offset is where the next page starts (None on the last page).
@@ -1532,6 +1559,7 @@ def search_tools_by_name(query: str, limit: int = 25, offset: int = 0) -> Galaxy
             or query_lower in tool.get("id", "").lower()
             or query_lower in tool.get("description", "").lower()
         ]
+        matching_tools += _searched_tools(gi, query, all_tools, matching_tools)
 
         # Galaxy's tool index has no pagination either, so the window is applied here.
         return _budgeted_page(

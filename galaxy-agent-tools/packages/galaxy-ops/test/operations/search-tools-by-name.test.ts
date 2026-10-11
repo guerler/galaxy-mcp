@@ -18,16 +18,46 @@ const TOOLS = [
 
 describe("search_tools_by_name", () => {
   it("sends in_panel=false and filters by name substring (case-insensitive)", async () => {
+    const queries: unknown[] = [];
     const client = mockClient({
       GET: (path, init) => {
         expect(path).toBe("/api/tools");
-        expect(init.params.query.in_panel).toBe(false);
-        return { data: TOOLS, response: { status: 200 } };
+        queries.push(init.params.query);
+        return { data: init.params.query.q === undefined ? TOOLS : [], response: { status: 200 } };
       },
     });
     const { items: out } = await searchToolsByName({ query: "fastqc" }, ctxWith(client));
     expect(out).toHaveLength(1);
     expect(out[0].id).toBe("fastqc_tool");
+    expect(queries).toEqual([{ in_panel: false }, { q: "fastqc" }]);
+  });
+
+  it("adds the tools Galaxy's own search ranks, after the substring matches", async () => {
+    const tools = [
+      { id: "pdf_parse", name: "Parse PDF", description: "Read PDF text" },
+      { id: "paper_fetch", name: "Download publication data", description: "Fetch PDFs" },
+      { id: "cat1", name: "Concatenate", description: "Join files" },
+    ];
+    const serving = (ranked: () => unknown) =>
+      mockClient({
+        GET: (_path, init) =>
+          init.params.query.q === undefined
+            ? { data: tools, response: { status: 200 } }
+            : { data: ranked(), response: { status: 200 } },
+      });
+    const ids = async (query: string, client: any) =>
+      (await searchToolsByName({ query }, ctxWith(client))).items.map((t) => t.id);
+    const index = serving(() => ["paper_fetch", "pdf_parse", "not_installed"]);
+    expect(await ids("pdf download", index)).toEqual(["paper_fetch", "pdf_parse"]);
+    expect(await ids("pdf", index)).toEqual(["pdf_parse", "paper_fetch"]);
+    const broken = mockClient({
+      GET: (_path, init) =>
+        init.params.query.q === undefined
+          ? { data: tools, response: { status: 200 } }
+          : { error: { err_msg: "no search index" }, response: { status: 500 } },
+    });
+    expect(await ids("pdf", broken)).toEqual(["pdf_parse", "paper_fetch"]);
+    expect(await ids("pdf download", broken)).toEqual([]);
   });
 
   it("matches against id when name/description do not match", async () => {

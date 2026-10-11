@@ -54,6 +54,29 @@ class TestToolOperations:
             assert len(result.data) == 1
             assert result.data[0]["id"] == "tool2"
 
+    def test_search_tools_adds_what_galaxy_search_finds(self, mock_galaxy_instance):
+        """A phrase no tool name contains still finds the tools Galaxy's own search ranks."""
+        mock_galaxy_instance.tools.get_tools.return_value = [
+            {"id": "pdf_parse", "name": "Parse PDF", "description": "Read PDF text"},
+            {"id": "paper_fetch", "name": "Download publication data", "description": "Fetch PDFs"},
+            {"id": "cat1", "name": "Concatenate", "description": "Join files"},
+        ]
+        response = Mock()
+        response.json.return_value = ["paper_fetch", "pdf_parse", "not_installed"]
+        mock_galaxy_instance.make_get_request.return_value = response
+        with patch.dict(galaxy_state, {"connected": True, "gi": mock_galaxy_instance}):
+            found = [t["id"] for t in search_tools_fn("pdf download").data]
+            assert found == ["paper_fetch", "pdf_parse"]
+            assert [t["id"] for t in search_tools_fn("pdf").data] == ["pdf_parse", "paper_fetch"]
+        mock_galaxy_instance.make_get_request.assert_called_with(
+            "http://localhost:8080/api/tools", params={"q": "pdf"}
+        )
+
+        mock_galaxy_instance.make_get_request.side_effect = Exception("no search index")
+        with patch.dict(galaxy_state, {"connected": True, "gi": mock_galaxy_instance}):
+            assert [t["id"] for t in search_tools_fn("pdf").data] == ["pdf_parse", "paper_fetch"]
+            assert search_tools_fn("pdf download").data == []
+
     def test_search_tools_with_results(self, mock_galaxy_instance):
         """Test search tools returns filtered results"""
         all_tools = [

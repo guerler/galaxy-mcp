@@ -52,7 +52,39 @@ async function run(i: In, ctx: GalaxyContext): Promise<Paged<ToolListItem>> {
       pyContains(pyLower(t.id ?? ""), needle) ||
       pyContains(pyLower(t.description ?? ""), needle),
   );
+  matches.push(...(await searched(ctx, i.query, Array.isArray(tools) ? tools : [], matches)));
   return paginate(matches, { limit, offset, noun: "tools" });
+}
+
+/**
+ * The tools Galaxy's search index ranks for the query, beyond those already found. The index
+ * matches each word and reads help text, so a phrase that is no substring of any name still
+ * finds its tools. It is best-effort: without it the substring matches stand.
+ */
+async function searched(
+  ctx: GalaxyContext,
+  query: string,
+  tools: ToolListItem[],
+  found: ToolListItem[],
+): Promise<ToolListItem[]> {
+  let ranked: unknown;
+  try {
+    ranked = await legacyGet<unknown>(ctx, "/api/tools", { params: { query: { q: query } } });
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(ranked)) return [];
+  const byId = new Map(tools.map((t) => [t.id, t]));
+  const seen = new Set(found.map((t) => t.id));
+  const out: ToolListItem[] = [];
+  for (const id of ranked) {
+    const tool = typeof id === "string" ? byId.get(id) : undefined;
+    if (tool && !seen.has(id)) {
+      seen.add(id);
+      out.push(tool);
+    }
+  }
+  return out;
 }
 
 export const searchToolsByNameOp: Operation<typeof input, Paged<ToolListItem>> = {
@@ -60,7 +92,7 @@ export const searchToolsByNameOp: Operation<typeof input, Paged<ToolListItem>> =
   domain: "tools",
   result: { kind: "list", paginated: true },
   summary:
-    "Search Galaxy tools by name, id, or description substring (case-insensitive), a page at a time.",
+    "Search Galaxy tools by name, id, or description substring (case-insensitive), then by Galaxy's own tool search, a page at a time.",
   input,
   run,
   budget: {

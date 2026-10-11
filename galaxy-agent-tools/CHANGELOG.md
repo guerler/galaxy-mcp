@@ -52,6 +52,14 @@ name, unless it says otherwise.
 - `update_history` sets MCP's `destructiveHint`, since it deletes the history when `deleted` is
   true.
 
+### Fixed
+
+- `search_tools_by_name` also returns, after its substring matches, the tools whose name, ID and
+  description hold every word of the query between them. A phrase that is no substring of any
+  one of them, such as `count occurrences` for Count ("occurrences of each record") or
+  `pdf download`, found nothing. Punctuation around a word is ignored, so
+  `Sort - data in ascending order` finds Sort; a query with a single-character word finds no more.
+
 ### `get_invocations` sends `step_details` for one invocation (#152)
 
 Given an `invocationId`, the op ignored `stepDetails` and Galaxy answered with every step's
